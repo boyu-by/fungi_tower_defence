@@ -1,0 +1,37 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/level_01.tscn" id="1_level"]
+
+[sub_resource type="SystemFont" id="Font_guide"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
+
+[node name="LargeCarcassDemo" instance=ExtResource("1_level")]
+expansion_demo_enabled = false
+carcass_demo_enabled = true
+
+[node name="ResourceGuide" type="Node2D" parent="World"]
+position = Vector2(1100, 400)
+
+[node name="TargetHorizontal" type="Line2D" parent="World/ResourceGuide"]
+points = PackedVector2Array(-9, 0, 9, 0)
+width = 1.5
+default_color = Color(0.83, 0.78, 0.55, 0.75)
+antialiased = true
+
+[node name="TargetVertical" type="Line2D" parent="World/ResourceGuide"]
+points = PackedVector2Array(0, -9, 0, 9)
+width = 1.5
+default_color = Color(0.83, 0.78, 0.55, 0.75)
+antialiased = true
+
+[node name="Hint" type="Label" parent="World/ResourceGuide"]
+offset_left = -230.0
+offset_top = 172.0
+offset_right = 72.0
+offset_bottom = 224.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_guide")
+theme_override_font_sizes/font_size = 15
+theme_override_colors/font_color = Color(0.83, 0.85, 0.67, 1)
+text = "B 种攻击芽 → 网络 16 + 培育 12 = 28\nG 仅伸展 · 尸骸每批最多 10"
+horizontal_alignment = 2

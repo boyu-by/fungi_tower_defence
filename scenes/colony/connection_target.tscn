@@ -1,0 +1,45 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/connection_target.gd" id="1_target"]
+
+[sub_resource type="SystemFont" id="SystemFont_target"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "sans-serif")
+
+[node name="ConnectionTarget" type="Node2D"]
+z_index = 16
+script = ExtResource("1_target")
+
+[node name="StatusLabel" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 384.0
+offset_bottom = 104.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.9, 0.94, 0.83, 1)
+theme_override_colors/font_shadow_color = Color(0.06, 0.1, 0.07, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_fonts/font = SubResource("SystemFont_target")
+theme_override_font_sizes/font_size = 14
+text = "请选择两个已有菌结"
+autowrap_mode = 3
+
+[node name="FirstLabel" type="Label" parent="."]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.98, 0.82, 0.42, 1)
+theme_override_colors/font_shadow_color = Color(0.06, 0.1, 0.07, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_fonts/font = SubResource("SystemFont_target")
+theme_override_font_sizes/font_size = 13
+text = "① 已选菌结"
+
+[node name="SecondLabel" type="Label" parent="."]
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.52, 0.89, 0.83, 1)
+theme_override_colors/font_shadow_color = Color(0.06, 0.1, 0.07, 0.9)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_fonts/font = SubResource("SystemFont_target")
+theme_override_font_sizes/font_size = 13
+text = "② 第二菌结"

@@ -1,0 +1,81 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/level_01.tscn" id="1_level"]
+[ext_resource type="Script" path="res://scripts/traffic_recovery_demo.gd" id="2_demo"]
+
+[sub_resource type="SystemFont" id="Font_demo"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
+
+[sub_resource type="Theme" id="Theme_demo"]
+default_font = SubResource("Font_demo")
+default_font_size = 14
+
+[node name="TrafficRecoveryDemo" instance=ExtResource("1_level")]
+script = ExtResource("2_demo")
+expansion_demo_enabled = false
+carcass_demo_enabled = true
+
+[node name="MotherCore" parent="World/Colony" index="0"]
+position = Vector2(480, 560)
+
+[node name="HyphaNode" parent="World/Colony/Nodes" index="0"]
+position = Vector2(410, 380)
+
+[node name="RightNode" parent="World/Colony/Nodes" index="1"]
+position = Vector2(1040, 400)
+
+[node name="RearNode" parent="World/Colony/Nodes" index="2"]
+position = Vector2(850, 560)
+
+[node name="EnemySpawner" parent="Systems" index="3"]
+auto_start = false
+
+[node name="RecoveryHUD" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="Guide" type="Label" parent="RecoveryHUD"]
+offset_left = 24.0
+offset_top = 258.0
+offset_right = 780.0
+offset_bottom = 282.0
+mouse_filter = 2
+theme = SubResource("Theme_demo")
+theme_override_colors/font_color = Color(0.92, 0.79, 0.57, 1)
+text = "网络验证 · 测试伤害不代表敌人啃食 · 归零断路，真实营养修复 · F6 返回原演示"
+
+[node name="Buttons" type="HBoxContainer" parent="RecoveryHUD"]
+offset_left = 24.0
+offset_top = 284.0
+offset_right = 780.0
+offset_bottom = 310.0
+theme = SubResource("Theme_demo")
+theme_override_constants/separation = 10
+
+[node name="Primary" type="Button" parent="RecoveryHUD/Buttons"]
+layout_mode = 2
+text = "1 主路受损 35"
+
+[node name="Bypass" type="Button" parent="RecoveryHUD/Buttons"]
+layout_mode = 2
+text = "2 旁路受损 35"
+
+[node name="Restore" type="Button" parent="RecoveryHUD/Buttons"]
+layout_mode = 2
+text = "3 修复选中"
+
+[node name="Supply" type="Button" parent="RecoveryHUD/Buttons"]
+layout_mode = 2
+text = "4 消耗 1 并供养"
+
+[node name="Access" type="Button" parent="RecoveryHUD/Buttons"]
+layout_mode = 2
+text = "5 采集段受损 35"
+
+[node name="Status" type="Label" parent="RecoveryHUD"]
+offset_left = 24.0
+offset_top = 312.0
+offset_right = 780.0
+offset_bottom = 334.0
+mouse_filter = 2
+theme = SubResource("Theme_demo")
+text = "网络验证准备中"

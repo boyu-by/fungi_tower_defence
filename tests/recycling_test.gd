@@ -38,14 +38,19 @@ func _check(condition: bool, description: String) -> void:
 
 func _new_level() -> Node2D:
 	var level := LEVEL_SCENE.instantiate() as Node2D
+	level.expansion_demo_enabled = false
 	level.get_node("Systems/EnemySpawner").auto_start = false
 	root.add_child(level)
 	current_scene = level
 	await physics_frame
 	await process_frame
 	level.supply_system.get_node("DispatchTimer").stop()
-	level.weapon.get_node("FireTimer").stop()
+	for current_weapon in level.get_weapons():
+		current_weapon.get_node("FireTimer").stop()
 	level.recycling_system.get_node("DispatchTimer").stop()
+	level.nutrition_return_system.auto_return = false
+	# 本组验证物流而非展开动画：使用成熟的 110/140 覆盖，不再使用旧 320 回收半径。
+	level.fungal_field.advance(1.0)
 	return level
 
 
@@ -78,13 +83,24 @@ func _wait_for_transport(level: Node2D) -> void:
 	_check(level.get_node("World/RecoveryPackets").get_child_count() == 0, "Finished packet remained")
 
 
+func _wait_for_income(level: Node2D, expected_total: int) -> void:
+	level.nutrition_return_system.auto_return = true
+	for frame in range(900):
+		if level.colony_progress.get_total_recovered() == expected_total:
+			break
+		await physics_frame
+	await _wait_frames(2)
+	_check(level.colony_progress.get_total_recovered() == expected_total,
+		"Actual return reached the core before timeout")
+
+
 func _test_death_and_delayed_income() -> void:
 	var level := await _new_level()
 	var enemy := ENEMY_SCENE.instantiate() as BasicEnemy
 	enemy.mother_core = level.mother_core
 	enemy.move_speed = 0.0
 	level.get_node("World/Enemies").add_child(enemy)
-	enemy.global_position = level.recovery_organ.global_position + Vector2(140, 0)
+	enemy.global_position = level.attack_organ.get_parent().global_position + Vector2(80, 0)
 	var death_position := enemy.global_position
 	enemy.take_damage(999)
 	enemy.take_damage(999)
@@ -101,7 +117,7 @@ func _test_death_and_delayed_income() -> void:
 		"Income or storage was credited before arrival")
 	var packet := level.get_node("World/RecoveryPackets").get_child(0) as RemainsPacket
 	await _wait_frames(12)
-	_check(packet.global_position.distance_to(level.recovery_organ.global_position) < 140.0,
+	_check(packet.global_position.distance_to(level.attack_organ.get_parent().global_position) < 80.0,
 		"Pickup packet did not move to frontline node")
 	await _wait_for_transport(level)
 	_check(not is_instance_valid(remains), "Delivered remains were not removed")
@@ -110,8 +126,11 @@ func _test_death_and_delayed_income() -> void:
 	_check(level.mother_core.nutrition == 72, "Arrival bypassed digestion")
 	level.digestive_organ.digest_timer.start(0.1)
 	await _wait_frames(18)
-	_check(level.mother_core.nutrition == 76 and level.digestive_organ.digested_count == 1,
-		"Digestion did not produce exactly four nutrition")
+	_check(level.mother_core.nutrition == 72 and level.colony_progress.get_total_recovered() == 0
+		and level.digestive_organ.digested_count == 1 and level.digestive_organ.get_output_nutrition() == 4,
+		"Digestion must produce four pending nutrients without early income")
+	await _wait_for_income(level, 4)
+	_check(level.mother_core.nutrition == 76, "Only real return credits four nutrition")
 	await _wait_frames(18)
 	_check(level.mother_core.nutrition == 76, "Digestion credited twice")
 	var alive_enemy := ENEMY_SCENE.instantiate() as BasicEnemy
@@ -125,24 +144,27 @@ func _test_death_and_delayed_income() -> void:
 func _test_interruptions_and_configuration() -> void:
 	var level := await _new_level()
 	var system: RecyclingSystem = level.recycling_system
-	var remains := _add_remains(level, level.recovery_organ.global_position + Vector2(20, 0))
-	var endpoint: Node2D = system.return_edge.end_node
-	system.return_edge.end_node = null
+	var remains := _add_remains(level, level.attack_organ.get_parent().global_position + Vector2(20, 0))
+	# 切掉母核到后方的旁路，确保测试的是所有通路都断开，而非仅指定直连失效。
+	level.digestive_organ.core_edge.end_node = null
+	var return_edge := level.get_node("World/Colony/Connections/RecoveryEdge") as HyphaEdge
+	var endpoint: Node2D = return_edge.end_node
+	return_edge.end_node = null
 	_check(not system.try_dispatch(), "Disconnected route accepted shipment")
 	_check(remains.is_available() and level.digestive_organ.incoming_remains == 0,
 		"Rejected route claimed resource")
-	system.return_edge.end_node = endpoint
+	return_edge.end_node = endpoint
 	_check(system.try_dispatch(), "Restored route rejected shipment")
 	await _wait_frames(24)
 	var packet := level.get_node("World/RecoveryPackets").get_child(0) as RemainsPacket
 	var drop_position := packet.global_position
-	system.return_edge.end_node = null
+	return_edge.end_node = null
 	await _wait_for_transport(level)
 	_check(remains.is_available() and remains.visible, "Interrupted remains did not return to ground")
 	_check(remains.global_position.distance_to(drop_position) < 0.01, "Remains dropped at wrong position")
 	_check(level.mother_core.nutrition == 72 and level.digestive_organ.incoming_remains == 0,
 		"Interruption credited income or leaked reservation")
-	system.return_edge.end_node = endpoint
+	return_edge.end_node = endpoint
 	system.try_dispatch()
 	packet = level.get_node("World/RecoveryPackets").get_child(0) as RemainsPacket
 	packet.cancel_transport()
@@ -166,7 +188,7 @@ func _test_capacity_and_core_connection() -> void:
 	var organ: DigestiveOrgan = level.digestive_organ
 	organ.capacity = 2
 	organ.digest_timer.wait_time = 5.0
-	var source: Vector2 = level.recovery_organ.global_position
+	var source: Vector2 = level.attack_organ.get_parent().global_position
 	for offset in [10.0, 20.0, 30.0]:
 		_add_remains(level, source + Vector2(offset, 0))
 	_check(level.recycling_system.try_dispatch() and level.recycling_system.try_dispatch(),
@@ -177,18 +199,23 @@ func _test_capacity_and_core_connection() -> void:
 	_check(organ.get_queued_count() == 2, "Queued inventory was miscounted")
 	_check(not level.recycling_system.try_dispatch(), "Full queue accepted another corpse")
 	var endpoint: Node2D = organ.core_edge.end_node
+	var alternate: HyphaEdge = level.get_node("World/Colony/Connections/RecoveryEdge")
+	var alternate_endpoint: Node2D = alternate.end_node
 	organ.core_edge.end_node = null
+	alternate.end_node = null
 	organ.digest_timer.start(0.1)
 	await _wait_frames(24)
-	_check(organ.get_queued_count() == 2 and level.mother_core.nutrition == 72,
-		"Disconnected digestion consumed resource")
+	_check(organ.get_queued_count() == 0 and organ.get_output_count() == 2
+		and organ.get_output_nutrition() == 8 and level.mother_core.nutrition == 72,
+		"Disconnected stomach processes received corpses into bounded uncredited outputs")
 	organ.core_edge.end_node = endpoint
-	await _wait_frames(24)
+	alternate.end_node = alternate_endpoint
+	await _wait_for_income(level, 8)
 	_check(organ.get_queued_count() == 0 and level.mother_core.nutrition == 80,
-		"Restored core connection did not resume digestion")
+		"Restored network returns retained products to the core")
 	_check(level.recycling_system.try_dispatch(), "Released capacity did not allow new shipment")
 	await _wait_for_transport(level)
-	await _wait_frames(24)
+	await _wait_for_income(level, 12)
 	_check(organ.digested_count == 3 and level.mother_core.nutrition == 84,
 		"Batch resource conservation failed")
 	await _remove_level(level)
@@ -197,7 +224,7 @@ func _test_capacity_and_core_connection() -> void:
 func _test_receiver_loss_and_restart() -> void:
 	var level := await _new_level()
 	var original: DigestiveOrgan = level.digestive_organ
-	var remains := _add_remains(level, level.recovery_organ.global_position)
+	var remains := _add_remains(level, level.attack_organ.get_parent().global_position)
 	level.recycling_system.try_dispatch()
 	var other := DIGESTIVE_SCENE.instantiate() as DigestiveOrgan
 	level.add_child(other)
@@ -208,7 +235,7 @@ func _test_receiver_loss_and_restart() -> void:
 	await _remove_level(level)
 
 	level = await _new_level()
-	remains = _add_remains(level, level.recovery_organ.global_position)
+	remains = _add_remains(level, level.attack_organ.get_parent().global_position)
 	level.recycling_system.try_dispatch()
 	level.digestive_organ.queue_free()
 	await _wait_for_transport(level)
@@ -217,7 +244,7 @@ func _test_receiver_loss_and_restart() -> void:
 	await _remove_level(level)
 
 	level = await _new_level()
-	_add_remains(level, level.recovery_organ.global_position)
+	_add_remains(level, level.attack_organ.get_parent().global_position)
 	level.recycling_system.try_dispatch()
 	var event := InputEventKey.new()
 	event.keycode = KEY_R
@@ -234,19 +261,27 @@ func _test_receiver_loss_and_restart() -> void:
 	level.enemy_spawner.stop_spawning()
 	_check(level.mother_core.nutrition == 72 and level.digestive_organ.incoming_remains == 0,
 		"Restart inherited nutrition or reservations")
-	_check(level.get_node("World/Remains").get_child_count() == 0 and
+	_check(level.get_node("World/Remains").get_child_count() == 1 and
+		level.has_node("World/Remains/ExpansionRemains") and
 		level.get_node("World/RecoveryPackets").get_child_count() == 0, "Restart inherited recycling objects")
+	_check(level.colony_progress.get_total_recovered() == 0 and level.digestive_organ.get_output_count() == 0
+		and level.nutrition_return_system.get_in_transit_count() == 0, "Restart clears output, returns and recovered statistics")
 	await _remove_level(level)
 
 
 func _test_default_cycle() -> void:
 	var level := LEVEL_SCENE.instantiate() as Node2D
+	level.expansion_demo_enabled = false
 	root.add_child(level)
 	current_scene = level
 	var shots := [0]
-	level.weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
+	var initial_resources: int = level.mother_core.nutrition
+	for organ in level.supply_system.get_registered_organs():
+		initial_resources += organ.nutrition
+	for current_weapon in level.get_weapons():
+		current_weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
 	for frame in range(2400):
-		if level.digestive_organ.digested_count == 6 or level.mother_core.health == 0:
+		if level.colony_progress.get_total_recovered() == 24 or level.mother_core.health == 0:
 			break
 		await physics_frame
 	await _wait_frames(180)
@@ -254,13 +289,19 @@ func _test_default_cycle() -> void:
 	_check(level.recycling_system.delivered_count == 6 and level.digestive_organ.digested_count == 6,
 		"Default cycle did not recover and digest all six")
 	_check(level.digestive_organ.total_nutrition_produced == 24, "Default cycle produced wrong income")
-	_check(level.mother_core.nutrition + level.attack_organ.nutrition +
-		level.supply_system.get_in_transit_count() + shots[0] == 100, "Full cycle conservation failed")
+	_check(level.colony_progress.get_total_recovered() == 24 and level.digestive_organ.get_output_nutrition() == 0,
+		"Every default-cycle product actually returned exactly once")
+	var stored: int = 0
+	for organ in level.supply_system.get_registered_organs():
+		stored += organ.nutrition
+	_check(level.mother_core.nutrition + stored + level.supply_system.get_in_transit_count() + shots[0]
+		== initial_resources + level.digestive_organ.total_nutrition_produced,
+		"Full cycle conservation failed across all organs")
 	_check(level.get_node("World/Remains").get_child_count() == 0 and
 		level.get_node("World/RecoveryPackets").get_child_count() == 0, "Full cycle left remains or packets")
 	_check(level.digestive_organ.get_queued_count() == 0 and
 		level.digestive_organ.incoming_remains == 0, "Full cycle left digestive reservations")
-	_check(level.hud.recovery_label.text.contains("营养回收：+24"), "HUD missed recovered nutrition")
+	_check(level.hud.recovery_label.text.contains("累计回收：+24"), "HUD missed independently recovered nutrition")
 	cycle_result = {
 		"defeated": level.enemy_spawner.defeated_count,
 		"digested": level.digestive_organ.digested_count,

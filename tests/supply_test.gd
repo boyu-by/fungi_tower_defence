@@ -34,6 +34,7 @@ func _check(condition: bool, description: String) -> void:
 
 func _new_level() -> Node2D:
 	var level := LEVEL_SCENE.instantiate() as Node2D
+	level.expansion_demo_enabled = false
 	level.get_node("Systems/EnemySpawner").auto_start = false
 	root.add_child(level)
 	current_scene = level
@@ -149,6 +150,8 @@ func _test_delivery_and_auto_supply() -> void:
 
 func _test_cancellation_and_rejection() -> void:
 	var level := await _new_level()
+	# 第二阶段可经后方绕行；本用例同时禁用旁路，继续验证真正断网的退款约束。
+	level.get_node("World/Colony/Connections/RecoveryEdge").end_node = null
 	var supply: SupplySystem = level.supply_system
 	var packets := level.get_node("World/Packets")
 	_check(level.mother_core.try_spend_nutrition(72), "Unable to exhaust test balance")

@@ -10,10 +10,39 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/colony_hud.tscn" id="7_hud"]
 [ext_resource type="PackedScene" path="res://scenes/combat/spore_weapon.tscn" id="8_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/systems/enemy_spawner.tscn" id="9_spawner"]
-[ext_resource type="PackedScene" path="res://scenes/colony/recovery_organ.tscn" id="10_recovery"]
 [ext_resource type="PackedScene" path="res://scenes/colony/digestive_organ.tscn" id="11_digestive"]
 [ext_resource type="PackedScene" path="res://scenes/systems/remains_spawner.tscn" id="12_remains"]
 [ext_resource type="PackedScene" path="res://scenes/systems/recycling_system.tscn" id="13_recycling"]
+[ext_resource type="Script" path="res://scripts/network_system.gd" id="14_network"]
+[ext_resource type="Script" path="res://scripts/fungal_field.gd" id="15_field"]
+[ext_resource type="Script" path="res://scripts/growth_system.gd" id="16_growth"]
+[ext_resource type="Script" path="res://scripts/growth_supply_system.gd" id="17_growth_supply"]
+[ext_resource type="Script" path="res://scripts/growth_input_controller.gd" id="18_growth_input"]
+[ext_resource type="Script" path="res://scripts/nutrition_return_system.gd" id="19_return"]
+[ext_resource type="Script" path="res://scripts/colony_progress.gd" id="20_progress"]
+[ext_resource type="PackedScene" path="res://scenes/recycling/enemy_remains.tscn" id="21_sample"]
+[ext_resource type="Script" path="res://scripts/cultivation_system.gd" id="22_cultivation"]
+[ext_resource type="Script" path="res://scripts/cultivation_supply_system.gd" id="23_cultivation_supply"]
+[ext_resource type="Script" path="res://scripts/cultivation_input_controller.gd" id="24_cultivation_input"]
+[ext_resource type="Script" path="res://scripts/remote_cultivation_system.gd" id="25_remote_cultivation"]
+
+[ext_resource type="Script" path="res://scripts/connection_system.gd" id="26_connection"]
+[ext_resource type="Script" path="res://scripts/connection_input_controller.gd" id="27_connection_input"]
+
+[ext_resource type="Script" path="res://scripts/network_traffic_system.gd" id="28_traffic"]
+[ext_resource type="Script" path="res://scripts/repair_system.gd" id="29_repair"]
+[ext_resource type="Script" path="res://scripts/repair_supply_system.gd" id="30_repair_supply"]
+[ext_resource type="Script" path="res://scripts/repair_input_controller.gd" id="31_repair_input"]
+[ext_resource type="Script" path="res://scripts/colony_capabilities.gd" id="32_capabilities"]
+[ext_resource type="Script" path="res://scripts/construction_queue.gd" id="33_queue"]
+[ext_resource type="Script" path="res://scripts/construction_coordinator.gd" id="34_coordinator"]
+[ext_resource type="PackedScene" path="res://scenes/ui/construction_queue.tscn" id="35_queue_ui"]
+[ext_resource type="Script" path="res://scripts/construction_supply_scheduler.gd" id="36_construction_supply"]
+[ext_resource type="Script" path="res://scripts/cargo_passage_tracker.gd" id="37_cargo_passage"]
+[ext_resource type="Script" path="res://scripts/main_vein_system.gd" id="38_main_vein"]
+
+[sub_resource type="SystemFont" id="Font_demo"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
 
 [node name="Level01" type="Node2D" unique_id=1081824810]
 script = ExtResource("1_i2aat")
@@ -28,6 +57,10 @@ offset_bottom = 800.0
 mouse_filter = 2
 color = Color(0.1254902, 0.16078432, 0.13725491, 1)
 
+[node name="FungalField" type="Node2D" parent="World"]
+z_index = -5
+script = ExtResource("15_field")
+
 [node name="Colony" type="Node2D" parent="World" unique_id=1375296272]
 y_sort_enabled = true
 
@@ -38,26 +71,39 @@ position = Vector2(600, 560)
 y_sort_enabled = true
 
 [node name="HyphaNode" parent="World/Colony/Nodes" unique_id=1801727760 instance=ExtResource("3_node")]
-position = Vector2(600, 248)
-display_name = "前线菌结"
+position = Vector2(440, 380)
+display_name = "左翼菌结"
 
 [node name="AttackOrgan" parent="World/Colony/Nodes/HyphaNode" instance=ExtResource("5_organ")]
-
-[node name="RecoveryOrgan" parent="World/Colony/Nodes/HyphaNode" instance=ExtResource("10_recovery")]
 
 [node name="SporeWeapon" parent="World/Colony/Nodes/HyphaNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container") instance=ExtResource("8_weapon")]
 position = Vector2(0, -28)
 inventory_owner = NodePath("../AttackOrgan")
 enemy_container = NodePath("../../../../Enemies")
 projectile_container = NodePath("../../../../Projectiles")
+attack_range = 100.0
+
+[node name="RightNode" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
+position = Vector2(780, 400)
+display_name = "右翼菌结"
+
+[node name="AttackOrgan" parent="World/Colony/Nodes/RightNode" instance=ExtResource("5_organ")]
+
+[node name="SporeWeapon" parent="World/Colony/Nodes/RightNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container") instance=ExtResource("8_weapon")]
+position = Vector2(0, -28)
+inventory_owner = NodePath("../AttackOrgan")
+enemy_container = NodePath("../../../../Enemies")
+projectile_container = NodePath("../../../../Projectiles")
+attack_range = 100.0
 
 [node name="RearNode" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
 position = Vector2(750, 590)
 display_name = "消化菌结"
 
-[node name="DigestiveOrgan" parent="World/Colony/Nodes/RearNode" node_paths=PackedStringArray("mother_core", "core_edge") instance=ExtResource("11_digestive")]
+[node name="DigestiveOrgan" parent="World/Colony/Nodes/RearNode" node_paths=PackedStringArray("mother_core", "core_edge", "colony_capabilities") instance=ExtResource("11_digestive")]
 mother_core = NodePath("../../../MotherCore")
 core_edge = NodePath("../../../Connections/DigestionEdge")
+colony_capabilities = NodePath("../../../../../Systems/ColonyCapabilities")
 
 [node name="Connections" type="Node2D" parent="World/Colony" unique_id=517366440]
 
@@ -74,6 +120,10 @@ end_node = NodePath("../../Nodes/RearNode")
 start_node = NodePath("../../MotherCore")
 end_node = NodePath("../../Nodes/RearNode")
 
+[node name="RightEdge" parent="World/Colony/Connections" node_paths=PackedStringArray("start_node", "end_node") instance=ExtResource("4_edge")]
+start_node = NodePath("../../Nodes/RearNode")
+end_node = NodePath("../../Nodes/RightNode")
+
 [node name="Packets" type="Node2D" parent="World" unique_id=811480019]
 y_sort_enabled = true
 
@@ -86,7 +136,46 @@ y_sort_enabled = true
 [node name="Remains" type="Node2D" parent="World"]
 y_sort_enabled = true
 
+[node name="ExpansionRemains" parent="World/Remains" instance=ExtResource("21_sample")]
+position = Vector2(1120, 420)
+
+[node name="Hint" type="Label" parent="World/Remains/ExpansionRemains"]
+offset_left = -204.0
+offset_top = -54.0
+offset_right = 48.0
+offset_bottom = -30.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_demo")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.80, 0.88, 0.66, 1)
+text = "域外尸体 4 · 按 G 向这里伸展"
+horizontal_alignment = 2
+
+[node name="Marker" type="Line2D" parent="World/Remains/ExpansionRemains"]
+points = PackedVector2Array(25, 0, 18, 18, 0, 25, -18, 18, -25, 0, -18, -18, 0, -25, 18, -18)
+closed = true
+width = 1.5
+default_color = Color(0.80, 0.88, 0.66, 0.65)
+antialiased = true
+
 [node name="RecoveryPackets" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="GrowthTips" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="GrowthTargets" type="Node2D" parent="World"]
+
+[node name="GrowthPackets" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="ReturnPackets" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="CultivationPackets" type="Node2D" parent="World"]
+y_sort_enabled = true
+
+[node name="RepairPackets" type="Node2D" parent="World"]
 y_sort_enabled = true
 
 [node name="SpawnPoints" type="Node2D" parent="World"]
@@ -99,11 +188,29 @@ position = Vector2(260, 300)
 
 [node name="Systems" type="Node" parent="."]
 
-[node name="SupplySystem" parent="Systems" node_paths=PackedStringArray("mother_core", "target_organ", "supply_edge", "packet_container") instance=ExtResource("6_supply")]
+[node name="CargoPassageTracker" type="Node" parent="Systems"]
+script = ExtResource("37_cargo_passage")
+
+[node name="MainVeinSystem" type="Node" parent="Systems" node_paths=PackedStringArray("cargo_passage_tracker")]
+script = ExtResource("38_main_vein")
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+
+[node name="NetworkSystem" type="Node" parent="Systems"]
+script = ExtResource("14_network")
+
+[node name="NetworkTrafficSystem" type="Node" parent="Systems" node_paths=PackedStringArray("network_system")]
+script = ExtResource("28_traffic")
+network_system = NodePath("../NetworkSystem")
+
+[node name="SupplySystem" parent="Systems" node_paths=PackedStringArray("traffic_system", "mother_core", "target_organ", "supply_edge", "packet_container", "network_system", "cargo_passage_tracker") instance=ExtResource("6_supply")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
 mother_core = NodePath("../../World/Colony/MotherCore")
 target_organ = NodePath("../../World/Colony/Nodes/HyphaNode/AttackOrgan")
 supply_edge = NodePath("../../World/Colony/Connections/HyphaEdge")
 packet_container = NodePath("../../World/Packets")
+network_system = NodePath("../NetworkSystem")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
 
 [node name="EnemySpawner" parent="Systems" node_paths=PackedStringArray("mother_core", "enemy_container", "spawn_points") instance=ExtResource("9_spawner")]
 mother_core = NodePath("../../World/Colony/MotherCore")
@@ -114,11 +221,155 @@ spawn_points = NodePath("../../World/SpawnPoints")
 enemy_container = NodePath("../../World/Enemies")
 remains_container = NodePath("../../World/Remains")
 
-[node name="RecyclingSystem" parent="Systems" node_paths=PackedStringArray("collector", "digestive_organ", "return_edge", "remains_container", "packet_container") instance=ExtResource("13_recycling")]
-collector = NodePath("../../World/Colony/Nodes/HyphaNode/RecoveryOrgan")
+[node name="RecyclingSystem" parent="Systems" node_paths=PackedStringArray("traffic_system", "digestive_organ", "network_system", "fungal_field", "remains_container", "packet_container", "cargo_passage_tracker") instance=ExtResource("13_recycling")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
 digestive_organ = NodePath("../../World/Colony/Nodes/RearNode/DigestiveOrgan")
-return_edge = NodePath("../../World/Colony/Connections/RecoveryEdge")
+network_system = NodePath("../NetworkSystem")
+fungal_field = NodePath("../../World/FungalField")
 remains_container = NodePath("../../World/Remains")
 packet_container = NodePath("../../World/RecoveryPackets")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
 
 [node name="HUD" parent="." instance=ExtResource("7_hud")]
+
+[node name="ConstructionQueue" parent="HUD" node_paths=PackedStringArray("coordinator", "marker_container") instance=ExtResource("35_queue_ui")]
+coordinator = NodePath("../../Systems/ConstructionCoordinator")
+marker_container = NodePath("../../World")
+
+[node name="GrowthSystem" type="Node" parent="Systems" node_paths=PackedStringArray("traffic_system", "network_system", "node_container", "edge_container", "tip_container")]
+script = ExtResource("16_growth")
+network_system = NodePath("../NetworkSystem")
+traffic_system = NodePath("../NetworkTrafficSystem")
+node_container = NodePath("../../World/Colony/Nodes")
+edge_container = NodePath("../../World/Colony/Connections")
+tip_container = NodePath("../../World/GrowthTips")
+
+[node name="GrowthSupplySystem" type="Node" parent="Systems" node_paths=PackedStringArray("traffic_system", "growth_system", "mother_core", "network_system", "combat_supply_system", "packet_container", "cargo_passage_tracker")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+script = ExtResource("17_growth_supply")
+growth_system = NodePath("../GrowthSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+combat_supply_system = NodePath("../SupplySystem")
+packet_container = NodePath("../../World/GrowthPackets")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
+
+[node name="GrowthInputController" type="Node2D" parent="Systems" node_paths=PackedStringArray("growth_system", "network_system", "target_container", "construction_coordinator")]
+construction_coordinator = NodePath("../ConstructionCoordinator")
+script = ExtResource("18_growth_input")
+growth_system = NodePath("../GrowthSystem")
+network_system = NodePath("../NetworkSystem")
+target_container = NodePath("../../World/GrowthTargets")
+
+[node name="NutritionReturnSystem" type="Node" parent="Systems" node_paths=PackedStringArray("traffic_system", "digestive_organ", "mother_core", "network_system", "packet_container", "cargo_passage_tracker")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+script = ExtResource("19_return")
+digestive_organ = NodePath("../../World/Colony/Nodes/RearNode/DigestiveOrgan")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+packet_container = NodePath("../../World/ReturnPackets")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
+
+[node name="ColonyProgress" type="Node" parent="Systems"]
+script = ExtResource("20_progress")
+
+[node name="ColonyCapabilities" type="Node" parent="Systems" node_paths=PackedStringArray("colony_progress")]
+script = ExtResource("32_capabilities")
+colony_progress = NodePath("../ColonyProgress")
+
+[node name="ConstructionQueue" type="Node" parent="Systems" node_paths=PackedStringArray("capabilities")]
+script = ExtResource("33_queue")
+capabilities = NodePath("../ColonyCapabilities")
+
+[node name="ConstructionWorkers" type="Node" parent="Systems"]
+
+[node name="ConstructionSupplyScheduler" type="Node" parent="Systems"]
+script = ExtResource("36_construction_supply")
+
+[node name="ConstructionCoordinator" type="Node" parent="Systems" node_paths=PackedStringArray("queue", "mother_core", "network_system", "growth_system", "growth_supply_system", "remote_cultivation_system", "connection_system", "cultivation_system", "cultivation_supply_system", "worker_container", "supply_scheduler", "cargo_passage_tracker")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+script = ExtResource("34_coordinator")
+multi_worker_enabled = true
+worker_container = NodePath("../ConstructionWorkers")
+supply_scheduler = NodePath("../ConstructionSupplyScheduler")
+queue = NodePath("../ConstructionQueue")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+growth_system = NodePath("../GrowthSystem")
+growth_supply_system = NodePath("../GrowthSupplySystem")
+remote_cultivation_system = NodePath("../RemoteCultivationSystem")
+connection_system = NodePath("../ConnectionSystem")
+cultivation_system = NodePath("../CultivationSystem")
+cultivation_supply_system = NodePath("../CultivationSupplySystem")
+
+[node name="RepairSystem" type="Node" parent="Systems" node_paths=PackedStringArray("network_system")]
+script = ExtResource("29_repair")
+network_system = NodePath("../NetworkSystem")
+
+[node name="RepairSupplySystem" type="Node" parent="Systems" node_paths=PackedStringArray("repair_system", "mother_core", "network_system", "traffic_system", "packet_container", "cargo_passage_tracker")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+script = ExtResource("30_repair_supply")
+repair_system = NodePath("../RepairSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+traffic_system = NodePath("../NetworkTrafficSystem")
+packet_container = NodePath("../../World/RepairPackets")
+traffic_required = true
+
+[node name="RepairInputController" type="Node2D" parent="Systems" node_paths=PackedStringArray("repair_system", "repair_supply_system", "network_system")]
+script = ExtResource("31_repair_input")
+repair_system = NodePath("../RepairSystem")
+repair_supply_system = NodePath("../RepairSupplySystem")
+network_system = NodePath("../NetworkSystem")
+
+[node name="CultivationSystem" type="Node" parent="Systems" node_paths=PackedStringArray("network_system", "growth_system", "enemy_container", "projectile_container")]
+script = ExtResource("22_cultivation")
+network_system = NodePath("../NetworkSystem")
+growth_system = NodePath("../GrowthSystem")
+enemy_container = NodePath("../../World/Enemies")
+projectile_container = NodePath("../../World/Projectiles")
+
+[node name="CultivationSupplySystem" type="Node" parent="Systems" node_paths=PackedStringArray("traffic_system", "cultivation_system", "mother_core", "network_system", "combat_supply_system", "packet_container", "cargo_passage_tracker")]
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+script = ExtResource("23_cultivation_supply")
+cultivation_system = NodePath("../CultivationSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+combat_supply_system = NodePath("../SupplySystem")
+packet_container = NodePath("../../World/CultivationPackets")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
+
+[node name="RemoteCultivationSystem" type="Node" parent="Systems" node_paths=PackedStringArray("growth_system", "cultivation_system", "growth_supply_system", "cultivation_supply_system")]
+script = ExtResource("25_remote_cultivation")
+growth_system = NodePath("../GrowthSystem")
+cultivation_system = NodePath("../CultivationSystem")
+growth_supply_system = NodePath("../GrowthSupplySystem")
+cultivation_supply_system = NodePath("../CultivationSupplySystem")
+
+[node name="CultivationInputController" type="Node" parent="Systems" node_paths=PackedStringArray("cultivation_system", "cultivation_supply_system", "growth_system", "network_system", "mother_core", "remote_cultivation_system", "growth_input_controller", "target_container", "construction_coordinator")]
+construction_coordinator = NodePath("../ConstructionCoordinator")
+script = ExtResource("24_cultivation_input")
+cultivation_system = NodePath("../CultivationSystem")
+cultivation_supply_system = NodePath("../CultivationSupplySystem")
+growth_system = NodePath("../GrowthSystem")
+network_system = NodePath("../NetworkSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+remote_cultivation_system = NodePath("../RemoteCultivationSystem")
+growth_input_controller = NodePath("../GrowthInputController")
+target_container = NodePath("../../World/GrowthTargets")
+
+[node name="ConnectionSystem" type="Node" parent="Systems" node_paths=PackedStringArray("growth_system", "mother_core")]
+script = ExtResource("26_connection")
+growth_system = NodePath("../GrowthSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+
+[node name="ConnectionInputController" type="Node2D" parent="Systems" node_paths=PackedStringArray("connection_system", "network_system", "target_container", "construction_coordinator")]
+construction_coordinator = NodePath("../ConstructionCoordinator")
+script = ExtResource("27_connection_input")
+connection_system = NodePath("../ConnectionSystem")
+network_system = NodePath("../NetworkSystem")
+target_container = NodePath("../../World/GrowthTargets")

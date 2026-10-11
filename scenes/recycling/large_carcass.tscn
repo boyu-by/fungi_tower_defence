@@ -1,0 +1,66 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/large_carcass.gd" id="1_source"]
+
+[sub_resource type="SystemFont" id="SystemFont_chinese"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
+allow_system_fallback = true
+
+[node name="LargeCarcass" type="Node2D"]
+z_index = -1
+script = ExtResource("1_source")
+
+[node name="Shadow" type="Polygon2D" parent="."]
+position = Vector2(0, 10)
+color = Color(0.11, 0.09, 0.07, 0.45)
+polygon = PackedVector2Array(-48, 0, -33, -12, 30, -12, 49, 0, 32, 13, -32, 13)
+
+[node name="Body" type="Polygon2D" parent="."]
+color = Color(0.48, 0.31, 0.23, 1)
+polygon = PackedVector2Array(-43, 5, -35, -17, -10, -26, 21, -20, 44, -4, 31, 19, -17, 22)
+
+[node name="Ribs" type="Polygon2D" parent="Body"]
+color = Color(0.83, 0.74, 0.57, 1)
+polygon = PackedVector2Array(-28, -7, -24, -12, 30, 5, 26, 10, 11, 5, 9, 17, 4, 15, 6, 3, -7, -1, -9, 11, -14, 9, -12, -3)
+
+[node name="TitleLabel" type="Label" parent="."]
+offset_left = -72.0
+offset_top = -74.0
+offset_right = 72.0
+offset_bottom = -53.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.96, 0.86, 0.66, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.09, 0.07, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = SubResource("SystemFont_chinese")
+theme_override_font_sizes/font_size = 15
+text = "大型尸骸"
+horizontal_alignment = 1
+
+[node name="StockLabel" type="Label" parent="."]
+offset_left = -72.0
+offset_top = 27.0
+offset_right = 72.0
+offset_bottom = 47.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.96, 0.91, 0.8, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.09, 0.07, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = SubResource("SystemFont_chinese")
+theme_override_font_sizes/font_size = 13
+text = "剩余营养：80/80"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="."]
+offset_left = -72.0
+offset_top = 47.0
+offset_right = 72.0
+offset_bottom = 67.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.84, 0.77, 0.62, 1)
+theme_override_colors/font_outline_color = Color(0.12, 0.09, 0.07, 1)
+theme_override_constants/outline_size = 3
+theme_override_fonts/font = SubResource("SystemFont_chinese")
+theme_override_font_sizes/font_size = 13
+text = "菌域外"
+horizontal_alignment = 1

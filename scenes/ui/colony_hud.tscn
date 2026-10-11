@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/colony_hud.gd" id="1_hud"]
 
 [sub_resource type="SystemFont" id="SystemFont_ui"]
-font_names = PackedStringArray("Microsoft YaHei", "Noto Sans CJK SC")
+font_names = PackedStringArray("Hiragino Sans GB", "Heiti SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Arial Unicode MS")
 
 [node name="ColonyHUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -16,8 +16,90 @@ offset_bottom = 54.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.82, 0.89, 0.83, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
-theme_override_font_sizes/font_size = 18
-text = "左键选菌结 · 右键/Esc 取消 · N 补给 · E 测试消耗 · H 测试受伤 · R 重开"
+theme_override_font_sizes/font_size = 16
+text = "左键选择 · G 伸展 · B 种芽 · C 培育 · L 连接 · P 暂停/恢复 · X 取消 · N 供养 · E 消耗 · R 重开 · F6 断路验证"
+
+[node name="RepairHelp" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 232.0
+offset_right = 780.0
+offset_bottom = 256.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.83, 0.82, 0.59, 1)
+text = "F 选菌丝 · J 修复 · K 暂停/继续 · Backspace 取消修复（P/X 仍控制建设）"
+
+[node name="StageLabel" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 608.0
+offset_right = 780.0
+offset_bottom = 638.0
+mouse_filter = 1
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 17
+theme_override_colors/font_color = Color(0.70, 0.91, 0.76, 1)
+text = "成长：初生 · 累计回收 0 · 下一门槛 60（还差 60）"
+clip_text = true
+
+[node name="RepairPanel" type="Control" parent="."]
+offset_left = 800.0
+offset_top = 234.0
+offset_right = 1176.0
+offset_bottom = 354.0
+mouse_filter = 0
+
+[node name="Background" type="ColorRect" parent="RepairPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.045, 0.08, 0.06, 0.95)
+
+[node name="Info" type="Label" parent="RepairPanel"]
+offset_left = 8.0
+offset_top = 3.0
+offset_right = 368.0
+offset_bottom = 84.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.87, 0.86, 0.69, 1)
+text = "修复：按 F 选择一条受损菌丝"
+clip_text = true
+
+[node name="Buttons" type="HBoxContainer" parent="RepairPanel"]
+offset_left = 8.0
+offset_top = 88.0
+offset_right = 368.0
+offset_bottom = 114.0
+theme_override_constants/separation = 6
+
+[node name="Mode" type="Button" parent="RepairPanel/Buttons"]
+layout_mode = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+text = "F 选择"
+
+[node name="Request" type="Button" parent="RepairPanel/Buttons"]
+layout_mode = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+text = "J 修复"
+
+[node name="Pause" type="Button" parent="RepairPanel/Buttons"]
+layout_mode = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+text = "K 暂停"
+
+[node name="Cancel" type="Button" parent="RepairPanel/Buttons"]
+layout_mode = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+text = "取消修复"
 
 [node name="SelectionLabel" type="Label" parent="."]
 offset_left = 24.0
@@ -33,35 +115,38 @@ text = "未选择菌结"
 [node name="StockLabel" type="Label" parent="."]
 offset_left = 24.0
 offset_top = 96.0
-offset_right = 1176.0
+offset_right = 392.0
 offset_bottom = 126.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.96, 0.84, 0.47, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 14
 text = "母核营养：72 · 器官库存：4/6 · 在途供养：0"
+clip_text = true
 
 [node name="TransportLabel" type="Label" parent="."]
 offset_left = 24.0
 offset_top = 132.0
-offset_right = 1176.0
+offset_right = 392.0
 offset_bottom = 162.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.73, 0.83, 0.76, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 14
 text = "营养包：在途 0 · 已到达 0 · 中止 0"
+clip_text = true
 
 [node name="NoticeLabel" type="Label" parent="."]
 offset_left = 24.0
 offset_top = 168.0
-offset_right = 1176.0
+offset_right = 392.0
 offset_bottom = 196.0
-mouse_filter = 2
+mouse_filter = 1
 theme_override_colors/font_color = Color(0.65, 0.73, 0.67, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
-theme_override_font_sizes/font_size = 16
-text = "库存不足时自动补给；库存和在途供养一起计入容量"
+theme_override_font_sizes/font_size = 14
+text = "按 G 向右侧域外尸体伸展；绿色营养包抵达母核后才计入累计回收"
+clip_text = true
 
 [node name="BattleLabel" type="Label" parent="."]
 offset_left = 800.0
@@ -76,15 +161,142 @@ text = "本轮敌人：0/6 · 场上：0
 已击败：0"
 horizontal_alignment = 2
 
+[node name="ColonyLabel" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 198.0
+offset_right = 392.0
+offset_bottom = 226.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.73, 0.83, 0.76, 1)
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "攻击器官：2 · 总库存：8/12 · 在途供养：0"
+clip_text = true
+
 [node name="RecoveryLabel" type="Label" parent="."]
 offset_left = 24.0
-offset_top = 660.0
-offset_right = 1176.0
-offset_bottom = 752.0
+offset_top = 642.0
+offset_right = 600.0
+offset_bottom = 758.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.79, 0.7, 0.83, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
-theme_override_font_sizes/font_size = 18
-text = "回收：在途 0 · 已送达 0 · 中断 0
-消化：排队 0 · 待送达 0 · 已消化 0
-营养回收：+0"
+theme_override_font_sizes/font_size = 15
+text = "尸体：在途 0 · 已送达 0\n胃囊：排队 0\n输出：0/2 · 营养 0/20\n绿色回流：在途 0\n累计回收：+0"
+
+[node name="FieldLegend" type="Label" parent="."]
+offset_left = 24.0
+offset_top = 762.0
+offset_right = 610.0
+offset_bottom = 790.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.66, 0.83, 0.77, 1)
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "青绿：菌域 · 琥珀：射程 · 黄：供养 · 紫：尸体 · 绿：回流"
+
+[node name="CultivationReasonLabel" type="Label" parent="."]
+offset_left = 632.0
+offset_top = 774.0
+offset_right = 1176.0
+offset_bottom = 798.0
+mouse_filter = 1
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.82, 0.83, 0.66, 1)
+text = "选择空菌结培育：12 营养 = 8 结构 + 4 库存"
+clip_text = true
+
+[node name="GrowthButtons" type="HBoxContainer" parent="."]
+offset_left = 632.0
+offset_top = 650.0
+offset_right = 1176.0
+offset_bottom = 684.0
+theme_override_constants/separation = 5
+
+[node name="ModeButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "G 伸展"
+
+[node name="RemoteCultivationButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+tooltip_text = "在远处种攻击芽：先伸展网络，再自动培育。总费为网络规划费 + 12。"
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "B 种攻击芽"
+
+[node name="CultivationButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+disabled = true
+text = "C 培育"
+
+[node name="ConnectionButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+tooltip_text = "依次选择两个已有菌结建立连接；两端免菌结费，可形成环路。"
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "L 连接菌结"
+
+[node name="PauseButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+disabled = true
+text = "P 暂停"
+
+[node name="CancelButton" type="Button" parent="GrowthButtons"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+disabled = true
+text = "X 取消"
+
+[node name="GrowthLabel" type="Label" parent="."]
+offset_left = 632.0
+offset_top = 688.0
+offset_right = 1176.0
+offset_bottom = 744.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.76, 0.9, 0.78, 1)
+text = "按 G 指定伸展目标"
+
+[node name="GrowthSupplyLabel" type="Label" parent="."]
+offset_left = 632.0
+offset_top = 749.0
+offset_right = 1176.0
+offset_bottom = 772.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.73, 0.83, 0.76, 1)
+text = "生长在途 0 · 战斗储备 0 · 生长可用 72"
+
+[node name="TrafficLabel" type="Label" parent="."]
+offset_left = 798.0
+offset_top = 146.0
+offset_right = 1176.0
+offset_bottom = 226.0
+mouse_filter = 1
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.80, 0.85, 0.92, 1)
+text = "通行占用 0/8 · 节点等待 0 包\n菌丝空闲 · 每条默认容量 2（双向共用）\n等待：黄 0 · 绿 0 · 紫 0（紫包占 2）"
+clip_text = true

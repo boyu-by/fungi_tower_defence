@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/growth_tip.gd" id="1_tip"]
+
+[node name="GrowthTip" type="Node2D"]
+script = ExtResource("1_tip")
+
+[node name="Body" type="Polygon2D" parent="."]
+color = Color(0.66, 0.81, 0.57, 1)
+polygon = PackedVector2Array(-7, -3, -3, -7, 5, -5, 8, 0, 5, 5, -3, 7, -7, 3)
+
+[node name="Center" type="Polygon2D" parent="."]
+color = Color(0.88, 0.94, 0.74, 1)
+polygon = PackedVector2Array(0, -3, 3, 0, 0, 3, -3, 0)

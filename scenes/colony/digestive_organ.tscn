@@ -1,12 +1,13 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/digestive_organ.gd" id="1_organ"]
+[ext_resource type="Script" path="res://scripts/digestive_chamber_view.gd" id="2_view"]
 
 [sub_resource type="RectangleShape2D" id="Shape_hit"]
 size = Vector2(58, 56)
 
 [sub_resource type="SystemFont" id="Font_ui"]
-font_names = PackedStringArray("Microsoft YaHei", "Noto Sans CJK SC")
+font_names = PackedStringArray("Hiragino Sans GB", "Heiti SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
 
 [sub_resource type="StyleBoxFlat" id="Progress_background"]
 bg_color = Color(0.08, 0.1, 0.09, 1)
@@ -48,14 +49,72 @@ step = 0.001
 show_percentage = false
 
 [node name="QueueLabel" type="Label" parent="."]
-offset_left = -60.0
+offset_left = -78.0
 offset_top = 12.0
-offset_right = 60.0
-offset_bottom = 36.0
+offset_right = 78.0
+offset_bottom = 48.0
 mouse_filter = 2
 theme_override_fonts/font = SubResource("Font_ui")
-theme_override_font_sizes/font_size = 14
-text = "0 (+0)/4"
+theme_override_font_sizes/font_size = 13
+text = "入库 0 (+0)/4\n输出 0 (+0)/2"
+horizontal_alignment = 1
+
+[node name="ChamberStatus" type="Label" parent="."]
+offset_left = -44.0
+offset_top = -100.0
+offset_right = 44.0
+offset_bottom = -69.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_ui")
+theme_override_font_sizes/font_size = 12
+text = "单腔\n空闲"
+horizontal_alignment = 1
+
+[node name="SecondChamber" type="Node2D" parent="."]
+visible = false
+position = Vector2(72, 0)
+
+[node name="Body" type="Node2D" parent="SecondChamber"]
+
+[node name="Shadow" type="Polygon2D" parent="SecondChamber/Body"]
+color = Color(0.05, 0.08, 0.06, 0.5)
+polygon = PackedVector2Array(-27, 0, -18, -8, 18, -8, 27, 0, 18, 8, -18, 8)
+
+[node name="Stalk" type="Polygon2D" parent="SecondChamber/Body"]
+color = Color(0.56, 0.47, 0.56, 1)
+polygon = PackedVector2Array(-9, 0, -11, -30, 11, -30, 9, 0, 0, 4)
+
+[node name="Cap" type="Polygon2D" parent="SecondChamber/Body"]
+color = Color(0.53, 0.32, 0.52, 1)
+polygon = PackedVector2Array(-25, -25, -20, -39, -8, -47, 8, -47, 20, -39, 25, -25, 14, -19, -14, -19)
+
+[node name="Pores" type="Line2D" parent="SecondChamber/Body"]
+points = PackedVector2Array(-16, -25, -8, -22, 0, -25, 8, -22, 16, -25)
+width = 3.0
+default_color = Color(0.85, 0.64, 0.61, 1)
+antialiased = true
+
+[node name="ProgressBar" type="ProgressBar" parent="SecondChamber"]
+offset_left = -26.0
+offset_top = -65.0
+offset_right = 26.0
+offset_bottom = -60.0
+mouse_filter = 2
+theme_override_styles/background = SubResource("Progress_background")
+theme_override_styles/fill = SubResource("Progress_fill")
+max_value = 1.0
+step = 0.001
+show_percentage = false
+
+[node name="StateLabel" type="Label" parent="SecondChamber"]
+offset_left = -48.0
+offset_top = -100.0
+offset_right = 48.0
+offset_bottom = -69.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_ui")
+theme_override_font_sizes/font_size = 12
+text = "二腔\n空闲"
 horizontal_alignment = 1
 
 [node name="GainFeedback" type="Node2D" parent="."]
@@ -64,8 +123,9 @@ position = Vector2(0, -66)
 
 [node name="Label" type="Label" parent="GainFeedback"]
 offset_left = -60.0
+offset_top = -62.0
 offset_right = 60.0
-offset_bottom = 24.0
+offset_bottom = -38.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.8, 0.95, 0.56, 1)
 theme_override_fonts/font = SubResource("Font_ui")
@@ -84,5 +144,17 @@ wait_time = 1.5
 one_shot = true
 process_callback = 0
 
+[node name="SecondDigestTimer" type="Timer" parent="."]
+wait_time = 1.5
+one_shot = true
+process_callback = 0
+
+[node name="ChamberExpansionTimer" type="Timer" parent="."]
+wait_time = 3.0
+one_shot = true
+process_callback = 0
+
+[node name="ChamberView" type="Node" parent="."]
+script = ExtResource("2_view")
+
 [connection signal="input_event" from="HitArea" to="." method="_on_hit_area_input_event"]
-[connection signal="timeout" from="DigestTimer" to="." method="_on_digest_timer_timeout"]

@@ -1,0 +1,246 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/construction_queue_controller.gd" id="1_controller"]
+
+[sub_resource type="SystemFont" id="SystemFont_queue"]
+font_names = PackedStringArray("Hiragino Sans GB", "Heiti SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Arial Unicode MS")
+
+[sub_resource type="Theme" id="Theme_queue"]
+default_font = SubResource("SystemFont_queue")
+
+[sub_resource type="StyleBoxFlat" id="Style_panel"]
+bg_color = Color(0.04, 0.08, 0.07, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.30, 0.50, 0.39, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_left = 8
+corner_radius_bottom_right = 8
+
+[sub_resource type="StyleBoxFlat" id="Style_row"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.09, 0.15, 0.12, 0.96)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[sub_resource type="StyleBoxFlat" id="Style_hover"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.17, 0.28, 0.21, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.85, 0.64, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[sub_resource type="StyleBoxFlat" id="Style_disabled"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 6.0
+content_margin_bottom = 1.0
+bg_color = Color(0.07, 0.11, 0.09, 0.7)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[sub_resource type="StyleBoxFlat" id="Style_action"]
+content_margin_left = 6.0
+content_margin_top = 4.0
+content_margin_right = 6.0
+content_margin_bottom = 4.0
+bg_color = Color(0.12, 0.21, 0.16, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_left = 4
+corner_radius_bottom_right = 4
+
+[node name="ConstructionQueue" type="Control"]
+layout_mode = 0
+offset_left = 408.0
+offset_top = 64.0
+offset_right = 788.0
+offset_bottom = 224.0
+mouse_filter = 0
+theme = SubResource("Theme_queue")
+script = ExtResource("1_controller")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Style_panel")
+
+[node name="TitleLabel" type="Label" parent="Panel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = 213.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.85, 0.98, 0.89, 1)
+theme_override_font_sizes/font_size = 13
+text = "施工队列 0/3 · 未选择"
+text_overrun_behavior = 3
+
+[node name="HintLabel" type="Label" parent="Panel"]
+layout_mode = 0
+offset_left = 213.0
+offset_top = 5.0
+offset_right = 368.0
+offset_bottom = 25.0
+theme_override_colors/font_color = Color(0.67, 0.80, 0.71, 1)
+theme_override_font_sizes/font_size = 10
+text = "P 暂停/继续 · X 取消"
+horizontal_alignment = 2
+
+[node name="Maturing" type="OptionButton" parent="Panel"]
+visible = false
+offset_left = 268.0
+offset_top = 3.0
+offset_right = 368.0
+offset_bottom = 25.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 11
+fit_to_longest_item = false
+clip_text = true
+text_overrun_behavior = 3
+text = "成熟 0"
+
+[node name="Row1" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 27.0
+offset_right = 368.0
+offset_bottom = 57.0
+focus_mode = 0
+theme_override_colors/font_color = Color(0.87, 0.94, 0.88, 1)
+theme_override_colors/font_disabled_color = Color(0.43, 0.53, 0.46, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("Style_row")
+theme_override_styles/hover = SubResource("Style_hover")
+theme_override_styles/pressed = SubResource("Style_hover")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "1. — 空闲槽位"
+alignment = 0
+text_overrun_behavior = 3
+
+[node name="Row2" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 60.0
+offset_right = 368.0
+offset_bottom = 90.0
+focus_mode = 0
+theme_override_colors/font_color = Color(0.87, 0.94, 0.88, 1)
+theme_override_colors/font_disabled_color = Color(0.43, 0.53, 0.46, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("Style_row")
+theme_override_styles/hover = SubResource("Style_hover")
+theme_override_styles/pressed = SubResource("Style_hover")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "2. — 空闲槽位"
+alignment = 0
+text_overrun_behavior = 3
+
+[node name="Row3" type="Button" parent="Panel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 93.0
+offset_right = 368.0
+offset_bottom = 123.0
+focus_mode = 0
+theme_override_colors/font_color = Color(0.87, 0.94, 0.88, 1)
+theme_override_colors/font_disabled_color = Color(0.43, 0.53, 0.46, 1)
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = SubResource("Style_row")
+theme_override_styles/hover = SubResource("Style_hover")
+theme_override_styles/pressed = SubResource("Style_hover")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "3. — 空闲槽位"
+alignment = 0
+text_overrun_behavior = 3
+
+[node name="Actions" type="HBoxContainer" parent="Panel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 128.0
+offset_right = 368.0
+offset_bottom = 156.0
+theme_override_constants/separation = 4
+
+[node name="MoveUp" type="Button" parent="Panel/Actions"]
+custom_minimum_size = Vector2(43, 28)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "将选中且尚未开始的任务上移"
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("Style_action")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "上移"
+
+[node name="MoveDown" type="Button" parent="Panel/Actions"]
+custom_minimum_size = Vector2(43, 28)
+layout_mode = 2
+focus_mode = 0
+tooltip_text = "将选中且尚未开始的任务下移"
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("Style_action")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "下移"
+
+[node name="Pause" type="Button" parent="Panel/Actions"]
+custom_minimum_size = Vector2(77, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("Style_action")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "暂停"
+
+[node name="Resume" type="Button" parent="Panel/Actions"]
+custom_minimum_size = Vector2(77, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("Style_action")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "继续"
+
+[node name="Cancel" type="Button" parent="Panel/Actions"]
+custom_minimum_size = Vector2(65, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+theme_override_colors/font_color = Color(1, 0.72, 0.64, 1)
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = SubResource("Style_action")
+theme_override_styles/disabled = SubResource("Style_disabled")
+disabled = true
+text = "取消"

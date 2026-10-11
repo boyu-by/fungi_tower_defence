@@ -1,0 +1,46 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://scripts/construction_worker.gd" id="1_worker"]
+[ext_resource type="Script" path="res://scripts/growth_system.gd" id="2_growth"]
+[ext_resource type="Script" path="res://scripts/growth_supply_system.gd" id="3_growth_supply"]
+[ext_resource type="Script" path="res://scripts/cultivation_system.gd" id="4_cultivation"]
+[ext_resource type="Script" path="res://scripts/cultivation_supply_system.gd" id="5_cultivation_supply"]
+[ext_resource type="Script" path="res://scripts/remote_cultivation_system.gd" id="6_remote"]
+[ext_resource type="Script" path="res://scripts/connection_system.gd" id="7_connection"]
+
+[node name="ConstructionWorker" type="Node" node_paths=PackedStringArray("growth_system", "growth_supply_system", "cultivation_system", "cultivation_supply_system", "remote_cultivation_system", "connection_system")]
+script = ExtResource("1_worker")
+growth_system = NodePath("GrowthSystem")
+growth_supply_system = NodePath("GrowthSupplySystem")
+cultivation_system = NodePath("CultivationSystem")
+cultivation_supply_system = NodePath("CultivationSupplySystem")
+remote_cultivation_system = NodePath("RemoteCultivationSystem")
+connection_system = NodePath("ConnectionSystem")
+
+[node name="GrowthSystem" type="Node" parent="."]
+script = ExtResource("2_growth")
+
+[node name="GrowthSupplySystem" type="Node" parent="." node_paths=PackedStringArray("growth_system")]
+script = ExtResource("3_growth_supply")
+growth_system = NodePath("../GrowthSystem")
+auto_supply = false
+
+[node name="CultivationSystem" type="Node" parent="." node_paths=PackedStringArray("growth_system")]
+script = ExtResource("4_cultivation")
+growth_system = NodePath("../GrowthSystem")
+
+[node name="CultivationSupplySystem" type="Node" parent="." node_paths=PackedStringArray("cultivation_system")]
+script = ExtResource("5_cultivation_supply")
+cultivation_system = NodePath("../CultivationSystem")
+auto_supply = false
+
+[node name="RemoteCultivationSystem" type="Node" parent="." node_paths=PackedStringArray("growth_system", "growth_supply_system", "cultivation_system", "cultivation_supply_system")]
+script = ExtResource("6_remote")
+growth_system = NodePath("../GrowthSystem")
+growth_supply_system = NodePath("../GrowthSupplySystem")
+cultivation_system = NodePath("../CultivationSystem")
+cultivation_supply_system = NodePath("../CultivationSupplySystem")
+
+[node name="ConnectionSystem" type="Node" parent="." node_paths=PackedStringArray("growth_system")]
+script = ExtResource("7_connection")
+growth_system = NodePath("../GrowthSystem")

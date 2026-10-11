@@ -35,13 +35,17 @@ func _check(condition: bool, description: String) -> void:
 
 func _new_level() -> Node2D:
 	var level := LEVEL_SCENE.instantiate() as Node2D
+	level.expansion_demo_enabled = false
 	level.get_node("Systems/EnemySpawner").auto_start = false
+	# 单武器行为测试保留 300 的独立基线；默认双器官布局由完整波次测试覆盖。
+	level.get_node("World/Colony/Nodes/HyphaNode/SporeWeapon").attack_range = 300.0
 	root.add_child(level)
 	current_scene = level
 	await physics_frame
 	await process_frame
 	level.supply_system.get_node("DispatchTimer").stop()
-	level.weapon.get_node("FireTimer").stop()
+	for current_weapon in level.get_weapons():
+		current_weapon.get_node("FireTimer").stop()
 	return level
 
 
@@ -202,11 +206,16 @@ func _test_defeat_and_restart() -> void:
 func _test_default_wave() -> void:
 	# 保持默认速度、数量、出生点和计时器，验证正常运行的一整轮。
 	var level := LEVEL_SCENE.instantiate() as Node2D
+	level.expansion_demo_enabled = false
 	root.add_child(level)
 	current_scene = level
 	var shots := [0]
 	var completions := [0]
-	level.weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
+	var initial_resources: int = level.mother_core.nutrition
+	for organ in level.supply_system.get_registered_organs():
+		initial_resources += organ.nutrition
+	for current_weapon in level.get_weapons():
+		current_weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
 	level.enemy_spawner.wave_finished.connect(func() -> void: completions[0] += 1)
 	for frame in range(1800):
 		if completions[0] > 0 or level.mother_core.health == 0:
@@ -223,7 +232,11 @@ func _test_default_wave() -> void:
 	_check(shots[0] >= 12, "Default wave applied damage without enough shots")
 	var in_transit: int = level.supply_system.get_in_transit_count()
 	var recovered: int = level.digestive_organ.total_nutrition_produced
-	_check(level.mother_core.nutrition + level.attack_organ.nutrition + in_transit + shots[0] == 76 + recovered,
+	var stored: int = 0
+	for organ in level.supply_system.get_registered_organs():
+		stored += organ.nutrition
+	_check(level.mother_core.nutrition + stored + in_transit + shots[0]
+		+ level.digestive_organ.get_output_nutrition() == initial_resources + recovered,
 		"Combat and supply failed resource conservation")
 	_check(level.supply_system.delivered_packets > 0, "Combat never used automatic supply")
 	full_wave_result = {
@@ -232,8 +245,10 @@ func _test_default_wave() -> void:
 		"shots": shots[0],
 		"core_health": level.mother_core.health,
 		"core_nutrition": level.mother_core.nutrition,
-		"local_nutrition": level.attack_organ.nutrition,
-		"recovered_nutrition": recovered,
+		"local_nutrition": stored,
+		"produced_nutrition": recovered,
+		"recovered_nutrition": level.colony_progress.get_total_recovered(),
+		"uncredited_output": level.digestive_organ.get_output_nutrition(),
 		"in_transit": in_transit
 	}
 	await _remove_level(level)

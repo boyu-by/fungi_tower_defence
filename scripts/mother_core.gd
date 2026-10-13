@@ -8,6 +8,7 @@ signal nutrition_changed(current: int)
 signal budget_changed(snapshot: Dictionary)
 signal digestion_product_arrived(product_id: String, nutrition: int)
 signal depleted
+signal tissue_destroyed(tissue: Node2D)
 
 @export var max_health: int = 240
 @export var initial_nutrition: int = 72
@@ -23,6 +24,10 @@ var _nutrition_dirty: bool = false
 
 @onready var health_bar: ProgressBar = $HealthBar
 
+func _enter_tree() -> void:
+	add_to_group("colony_tissues")
+
+
 func _ready() -> void:
 	health = max_health
 	nutrition = maxi(initial_nutrition, 0)
@@ -36,10 +41,45 @@ func take_damage(amount: int) -> void:
 
 	health = maxi(health - amount, 0)
 	_update_health_bar()
+	if health == 0:
+		tissue_destroyed.emit(self)
+	if not is_instance_valid(self) or is_queued_for_deletion():
+		return
 	health_changed.emit(health, max_health)
 
 	if health == 0:
 		depleted.emit()
+
+
+func is_attackable() -> bool:
+	return health > 0 and not is_queued_for_deletion()
+
+
+func is_functional() -> bool:
+	return is_attackable()
+
+
+func is_repairable() -> bool:
+	return is_attackable() and health < max_health
+
+
+func heal(amount: float) -> float:
+	if not is_finite(amount) or amount < 1.0 or not is_repairable():
+		return 0.0
+	# 母核仍使用原来的整数生命；维修系统保留不足一 HP 的有效作业时间。
+	var actual: int = mini(int(floor(amount)), max_health - health)
+	health += actual
+	_update_health_bar()
+	health_changed.emit(health, max_health)
+	return float(actual)
+
+
+func get_health_snapshot() -> Dictionary:
+	return {
+		"health": health, "max_health": max_health,
+		"destroyed": health <= 0, "functional": is_functional(),
+		"missing_health": maxi(max_health - health, 0), "damaged": health < max_health,
+	}
 
 
 func try_spend_nutrition(amount: int) -> bool:
@@ -169,4 +209,5 @@ func _notify_budget(nutrition_changed_now: bool) -> void:
 
 
 func _update_health_bar() -> void:
-	health_bar.value = health
+	if is_instance_valid(health_bar):
+		health_bar.value = health

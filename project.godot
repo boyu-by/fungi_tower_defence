@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="fungi_DEMO"
-run/main_scene="res://scenes/levels/large_carcass_demo.tscn"
+run/main_scene="res://scenes/levels/first_level.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -23,6 +23,31 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
 [input]
+
+colony_operations_demo={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"keycode":4194341)]
+}
+
+
+terrain_threat_demo={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"keycode":4194340)]
+}
+
+combat_specialization_demo={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"keycode":4194339)]
+}
+
+original_carcass_demo={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"keycode":4194336)]
+}
+progression_demo={
+"deadzone": 0.5,
+"events": [Object(InputEventKey,"keycode":4194338)]
+}
 
 repair_mode={
 "deadzone": 0.5,

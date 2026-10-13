@@ -372,8 +372,18 @@ func _test_quotes_and_connected_start() -> void:
 	controller.set_process(false)
 	var preview: Dictionary = controller.preview_remote_at(Vector2(720, 400))
 	_check(bool(preview.get("valid", false)) and preview.get("start_node") == front, "Preview chooses the nearest connected mature start")
-	_check(preview.get("plan", {}) == planner.plan(front.global_position, Vector2(720, 400), false),
-		"Remote preview retains the entire exact planner result")
+	var expected_plan: Dictionary = planner.plan(front.global_position, Vector2(720, 400), false)
+	var actual_plan: Dictionary = preview.get("plan", {})
+	# Stage10 annotates the same charged geometry with main-segment identity.
+	for segment_index: int in range(expected_plan["segments"].size()):
+		expected_plan["segments"][segment_index]["is_branch"] = false
+		expected_plan["segments"][segment_index]["main_segment_index"] = segment_index
+	var geometry_matches: bool = true
+	for key: Variant in expected_plan:
+		geometry_matches = geometry_matches and actual_plan.get(key) == expected_plan[key]
+	_check(geometry_matches and actual_plan.get("join_node") == null
+		and actual_plan.get("effective_point") == Vector2(720, 400),
+		"Remote preview preserves exact geometry/cost and explicit target metadata")
 	_check(int(preview.get("network_cost", 0)) == 16 and int(preview.get("organ_cost", 0)) == 12 \
 		and int(preview.get("total_cost", 0)) == 28 and int(preview.get("remaining_cost", 0)) == 28,
 		"A 320px request quotes exactly 16 network plus 12 organ nutrition")

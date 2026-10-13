@@ -191,7 +191,7 @@ func _weapon_children(host: HyphaNode) -> Array[SporeWeapon]:
 
 func _observe_maturity(level: Node2D, expected_host: HyphaNode) -> Dictionary:
 	var evidence: Dictionary = {
-		"matured": 0, "shots": 0, "organ": null, "weapon": null,
+		"matured": 0, "shots": 0, "nutrition_spent": 0, "organ": null, "weapon": null,
 		"stock_on_maturity": -1, "effective_time": 0.0, "shot_stocks": [],
 	}
 	level.cultivation_system.organ_matured.connect(
@@ -218,10 +218,13 @@ func _observe_maturity(level: Node2D, expected_host: HyphaNode) -> Dictionary:
 			_check(weapon.enemy_container == level.get_node("World/Enemies") \
 				and weapon.projectile_container == level.get_node("World/Projectiles"),
 				"New weapon points at the real level battle containers")
+			_check(weapon.targeting_required and weapon.targeting_system == level.combat_targeting_system,
+				"Actual paid maturation binds the shared targeting ledger before the new weapon fires")
 			var timer: Timer = weapon.get_node("FireTimer") as Timer
 			timer.stop()
-			weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void:
+			weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
 				evidence["shots"] = int(evidence["shots"]) + 1
+				evidence["nutrition_spent"] = int(evidence["nutrition_spent"]) + spent
 				var stocks: Array = evidence["shot_stocks"]
 				stocks.append(organ.nutrition)
 				timer.stop()))
@@ -237,8 +240,8 @@ func _wait_maturity(level: Node2D, limit: int = 6000) -> void:
 		"Real cultivation transport and physics time mature the organ before timeout")
 
 
-func _accounted(level: Node2D, shots: int = 0) -> int:
-	var total: int = level.mother_core.nutrition + shots
+func _accounted(level: Node2D, nutrition_spent: int = 0) -> int:
+	var total: int = level.mother_core.nutrition + nutrition_spent
 	for organ: AttackOrgan in level.supply_system.get_registered_organs():
 		# incoming 是已经付过款的普通供养包，不能再另加普通 packet 数量。
 		total += organ.nutrition + organ.incoming_nutrition
@@ -253,9 +256,9 @@ func _accounted(level: Node2D, shots: int = 0) -> int:
 	return total
 
 
-func _checkpoint(level: Node2D, phase: String, expected: int, shots: int = 0) -> void:
-	var total: int = _accounted(level, shots)
-	milestones.append({"phase": phase, "total": total, "expected": expected, "shots": shots})
+func _checkpoint(level: Node2D, phase: String, expected: int, nutrition_spent: int = 0) -> void:
+	var total: int = _accounted(level, nutrition_spent)
+	milestones.append({"phase": phase, "total": total, "expected": expected, "nutrition_spent": nutrition_spent})
 	_check(total == expected, "%s conserves core, paid transit, unique structure, buffer, startup and shots" % phase)
 
 
@@ -376,7 +379,7 @@ func _test_real_maturity_and_combat_supply() -> void:
 	await _fire_once(weapon, evidence)
 	_check(organ.nutrition == 3 and level.mother_core.nutrition == before - 12,
 		"First real shot consumes local paid stock without immediate core spending")
-	_checkpoint(level, "first_local_shot", initial, int(evidence["shots"]))
+	_checkpoint(level, "first_local_shot", initial, int(evidence["nutrition_spent"]))
 	await _fire_once(weapon, evidence)
 	var stocks: Array = evidence["shot_stocks"]
 	_check(stocks.size() == 2 and int(stocks[0]) == 3 and int(stocks[1]) == 2,
@@ -394,7 +397,7 @@ func _test_real_maturity_and_combat_supply() -> void:
 	_check(level.cultivation_supply_system.get_in_transit_count() == 0 \
 		and level.cultivation_system.get_task_snapshot().state == &"completed",
 		"Mature resupply does not reopen cultivation funding")
-	_checkpoint(level, "normal_supply_handoff", initial, int(evidence["shots"]))
+	_checkpoint(level, "normal_supply_handoff", initial, int(evidence["nutrition_spent"]))
 	maturity_result = {
 		"growth_cost": int(level.growth_system.get_task_snapshot().consumed_nutrition),
 		"cultivation_cost": 12, "structure": 8, "startup": evidence["stock_on_maturity"],

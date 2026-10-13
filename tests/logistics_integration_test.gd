@@ -166,6 +166,8 @@ func _test_dynamic_registration() -> void:
 	_check(supply.get_registered_organs().size() == 3 and supply.get_registered_organs().has(organ),
 		"Adding an organ to a live node registers it")
 	_check(supply.get_active_organs().size() == 3, "New connected organ appears in active query")
+	_check(current_weapon.targeting_required and current_weapon.targeting_system == level.combat_targeting_system,
+		"Dynamically registered weapon joins the level's one required targeting ledger")
 	var route := network.find_route(level.mother_core, host)
 	_check(route.segments.size() == 3, "Added organ has a three-edge route")
 	organ.selection_requested.emit()

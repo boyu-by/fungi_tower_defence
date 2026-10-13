@@ -275,11 +275,14 @@ func _test_default_cycle() -> void:
 	root.add_child(level)
 	current_scene = level
 	var shots := [0]
+	var combat_cost := [0]
 	var initial_resources: int = level.mother_core.nutrition
 	for organ in level.supply_system.get_registered_organs():
 		initial_resources += organ.nutrition
 	for current_weapon in level.get_weapons():
-		current_weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
+		current_weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
+			shots[0] += 1
+			combat_cost[0] += spent)
 	for frame in range(2400):
 		if level.colony_progress.get_total_recovered() == 24 or level.mother_core.health == 0:
 			break
@@ -294,7 +297,7 @@ func _test_default_cycle() -> void:
 	var stored: int = 0
 	for organ in level.supply_system.get_registered_organs():
 		stored += organ.nutrition
-	_check(level.mother_core.nutrition + stored + level.supply_system.get_in_transit_count() + shots[0]
+	_check(level.mother_core.nutrition + stored + level.supply_system.get_in_transit_count() + combat_cost[0]
 		== initial_resources + level.digestive_organ.total_nutrition_produced,
 		"Full cycle conservation failed across all organs")
 	_check(level.get_node("World/Remains").get_child_count() == 0 and
@@ -306,7 +309,7 @@ func _test_default_cycle() -> void:
 		"defeated": level.enemy_spawner.defeated_count,
 		"digested": level.digestive_organ.digested_count,
 		"income": level.digestive_organ.total_nutrition_produced,
-		"shots": shots[0], "core_balance": level.mother_core.nutrition
+		"shots": shots[0], "nutrition_spent": combat_cost[0], "core_balance": level.mother_core.nutrition
 	}
 	await _remove_level(level)
 	_check(root.get_child_count() == 0, "Recycling teardown left orphan nodes")

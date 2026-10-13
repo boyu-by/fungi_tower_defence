@@ -14,7 +14,5 @@ process_callback = 0
 
 [node name="SpawnTimer" type="Timer" parent="."]
 wait_time = 3.0
+one_shot = true
 process_callback = 0
-
-[connection signal="timeout" from="StartTimer" to="." method="start_wave"]
-[connection signal="timeout" from="SpawnTimer" to="." method="_on_spawn_timer_timeout"]

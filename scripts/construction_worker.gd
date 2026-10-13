@@ -222,10 +222,10 @@ func start_request(construction_id: String, kind: StringName, parameters: Dictio
 		match kind:
 			&"growth":
 				internal_id = growth_system.create_target(parameters.get("start_node"), \
-					parameters.get("target_position", Vector2.ZERO))
+					parameters.get("target_position", Vector2.ZERO), int(parameters.get("plan_version", 1)))
 			&"remote_cultivation":
 				internal_id = remote_cultivation_system.request_remote(parameters.get("start_node"), \
-					parameters.get("target_position", Vector2.ZERO))
+					parameters.get("target_position", Vector2.ZERO), parameters.get("organ_kind", &"attack"), int(parameters.get("plan_version", 1)))
 			&"connection":
 				var first: HyphaNode = parameters.get("first_node") as HyphaNode
 				var second: HyphaNode = parameters.get("second_node") as HyphaNode
@@ -234,7 +234,7 @@ func start_request(construction_id: String, kind: StringName, parameters: Dictio
 			&"cultivation":
 				var host: HyphaNode = parameters.get("host") as HyphaNode
 				internal_id = cultivation_system.continue_cultivation(host) \
-					if bool(parameters.get("continue_existing", false)) else cultivation_system.start_cultivation(host)
+					if bool(parameters.get("continue_existing", false)) else cultivation_system.start_cultivation(host, parameters.get("organ_kind", &""))
 	if _construction_id == construction_id and internal_id > 0:
 		var key: String = "growth_task_id"
 		if kind == &"remote_cultivation":
@@ -285,9 +285,8 @@ func get_snapshot() -> Dictionary:
 
 
 func get_resource_snapshot() -> Dictionary:
-	var growth: Dictionary = growth_system.get_task_snapshot() if _node_is_available(growth_system) else {}
+	var growth: Dictionary = growth_system.get_resource_snapshot() if _node_is_available(growth_system) else {}
 	var cultivation: Dictionary = cultivation_system.get_resource_snapshot() if _node_is_available(cultivation_system) else {}
-	var task: Dictionary = cultivation_system.get_task_snapshot() if _node_is_available(cultivation_system) else {}
 	return {
 		"network_structure": int(growth.get("consumed_nutrition", 0)),
 		"organ_structure": int(cultivation.get("structure_consumed", 0)),
@@ -296,7 +295,8 @@ func get_resource_snapshot() -> Dictionary:
 		"startup_reserved": int(cultivation.get("startup_reserved", 0)),
 		"growth_transit": _paid_transit(growth_supply_system),
 		"cultivation_transit": _paid_transit(cultivation_supply_system),
-		"startup_transferred": int(task.get("startup_transferred", 0)),
+		"startup_transferred": cultivation_system.get_startup_transferred_nutrition() \
+			if _node_is_available(cultivation_system) else 0,
 	}
 
 
@@ -578,7 +578,7 @@ func _completion_is_valid(actual: Dictionary) -> bool:
 	if _kind == &"connection":
 		return endpoint == actual.get("target_node") \
 			and network.has_direct_connection(_parameters.get("first_node"), _parameters.get("second_node"))
-	if endpoint.global_position.distance_to(_parameters.get("target_position", Vector2.ZERO)) > 1.0:
+	if endpoint.global_position.distance_to(growth_system.get_task_snapshot().get("resolved_target_position", _parameters.get("target_position", Vector2.ZERO))) > 1.0:
 		return false
 	if _kind == &"remote_cultivation":
 		var growth: Dictionary = growth_system.get_task_snapshot()
@@ -592,17 +592,20 @@ func _completion_is_valid(actual: Dictionary) -> bool:
 func _cultivation_is_complete(task: Dictionary) -> bool:
 	var host: HyphaNode = task.get("host") as HyphaNode
 	var network: NetworkSystem = _config.get("network_system") as NetworkSystem
+	var digestive: bool = task.get("organ_kind", &"attack") == &"digestive"
+	var structure_cost: int = int(task.get("structure_cost", CultivationSystem.STRUCTURE_COST))
+	var startup_cost: int = int(task.get("startup_cost", 0 if digestive else CultivationSystem.STARTUP_COST))
 	if task.get("state") != &"completed" or int(task.get("task_id", 0)) <= 0 \
 			or int(task.get("task_id", 0)) != int(_internal_ids["cultivation_task_id"]) \
 			or cultivation_system.has_active_task() \
-			or int(task.get("structure_consumed", 0)) != CultivationSystem.STRUCTURE_COST \
-			or int(task.get("startup_transferred", 0)) != CultivationSystem.STARTUP_COST \
+			or int(task.get("structure_consumed", 0)) != structure_cost \
+			or int(task.get("startup_transferred", 0)) != startup_cost \
 			or float(task.get("effective_time", 0.0)) < CultivationSystem.MINIMUM_EFFECTIVE_TIME \
 			or int(task.get("buffered_nutrition", 0)) != 0 or int(task.get("startup_reserved", 0)) != 0 \
 			or not _node_is_available(host) or not _node_is_available(network) or not network.is_node_registered(host):
 		return false
 	var organ: Variant = host.get_organ_occupant()
-	if not _node_is_available(organ) or not organ is AttackOrgan or organ.get_parent() != host:
+	if not _node_is_available(organ) or organ.get_parent() != host or (digestive and not organ is DigestiveOrgan) or (not digestive and not organ is AttackOrgan):
 		return false
 	var occupants: int = 0
 	for child: Node in host.get_children():
@@ -765,3 +768,24 @@ func _publish_changed() -> void:
 
 func _node_is_available(node: Variant) -> bool:
 	return is_instance_valid(node) and node is Node and not node.is_queued_for_deletion()
+
+
+func preview_retarget(position: Vector2) -> Dictionary:
+	if not _has_live_request() or _shutting_down or _phase == &"maturing" or _kind not in [&"growth", &"remote_cultivation"]:
+		return {"valid": false, "error": "此目标已成熟或不能改向。"}
+	return remote_cultivation_system.preview_retarget(position) if _kind == &"remote_cultivation" else growth_system.preview_retarget(position)
+
+
+func retarget_target(position: Vector2) -> bool:
+	if not bool(preview_retarget(position).get("valid", false)) or _syncing:
+		return false
+	# 先屏蔽执行器同步通知；新几何和请求参数作为同一操作发布。
+	_syncing = true
+	var previous: Vector2 = _parameters.get("target_position", Vector2.ZERO)
+	_parameters["target_position"] = position
+	var accepted: bool = remote_cultivation_system.retarget_target(position) if _kind == &"remote_cultivation" else growth_system.retarget_target(position)
+	if not accepted:
+		_parameters["target_position"] = previous
+	_syncing = false
+	_sync_request()
+	return accepted

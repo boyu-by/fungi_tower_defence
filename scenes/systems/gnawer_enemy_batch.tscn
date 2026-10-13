@@ -1,0 +1,8 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/systems/enemy_spawner.tscn" id="1_spawner"]
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="Resource" path="res://resources/enemies/spawn_entries/gnawer_single.tres" id="3_gnawer"]
+
+[node name="GnawerEnemyBatch" instance=ExtResource("1_spawner")]
+spawn_entries = Array[ExtResource("2_entry")]([ExtResource("3_gnawer")])

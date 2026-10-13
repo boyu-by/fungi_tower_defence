@@ -18,6 +18,7 @@ func _run() -> void:
 	_test_actions()
 	_test_configuration_guard()
 	_test_line_selection_and_preview()
+	_test_short_edge_and_node_picking()
 	_test_task_controls_and_selection_exit()
 	_test_stale_selection()
 	await _test_no_duplicate_global_handler()
@@ -265,4 +266,21 @@ func _test_no_duplicate_global_handler() -> void:
 	_check(not controller.is_selecting(), "A controller alone has no duplicate global input handler")
 	_check(controller.handle_input(event) and controller.is_selecting(),
 		"The owning level can forward the same input exactly once")
+	_dispose(fixture)
+
+
+func _test_short_edge_and_node_picking() -> void:
+	var fixture: Dictionary = _fixture()
+	var first: HyphaNode = fixture["first"] as HyphaNode
+	var second: HyphaNode = fixture["second"] as HyphaNode
+	var edge: HyphaEdge = fixture["target"] as HyphaEdge
+	var controller: RepairInputController = fixture["controller"] as RepairInputController
+	controller.enter_selection_mode()
+	for length: float in [38.0, 4.0]:
+		second.global_position = first.global_position + Vector2(length, 0.0)
+		var middle: Vector2 = first.global_position.lerp(second.global_position, 0.5)
+		_check(controller.select_at(middle) and controller.get_selected_edge() == edge,
+			"Short connection is selectable inside both endpoint pick circles")
+		_check(controller.select_at(second.global_position) and controller.get_selected_target() == second,
+			"Clicking actual junction center retains node priority")
 	_dispose(fixture)

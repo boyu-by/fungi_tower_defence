@@ -23,6 +23,10 @@ func can_expand_second_digestive_chamber() -> bool:
 	return _get_stage() == ColonyProgress.Stage.MATURE
 
 
+func can_differentiate_attack_organs() -> bool:
+	return _get_stage() == ColonyProgress.Stage.MATURE
+
+
 func _get_stage() -> ColonyProgress.Stage:
 	if not is_instance_valid(colony_progress) or colony_progress.is_queued_for_deletion():
 		return ColonyProgress.Stage.NASCENT

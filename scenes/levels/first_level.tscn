@@ -1,0 +1,30 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/first_level_map.tscn" id="1_map"]
+[ext_resource type="Script" path="res://scripts/first_level.gd" id="2_level"]
+[ext_resource type="Script" path="res://scripts/first_level_flow.gd" id="3_flow"]
+[ext_resource type="Script" path="res://scripts/global_pause_controller.gd" id="4_pause"]
+[ext_resource type="PackedScene" path="res://scenes/ui/first_level_hud.tscn" id="5_hud"]
+
+[node name="FirstLevel" instance=ExtResource("1_map")]
+process_mode = 3
+script = ExtResource("2_level")
+
+[node name="World" parent="."]
+process_mode = 1
+
+[node name="Systems" parent="."]
+process_mode = 1
+
+[node name="HUD" parent="."]
+process_mode = 3
+
+[node name="FirstLevelFlow" type="Node" parent="."]
+process_mode = 1
+script = ExtResource("3_flow")
+
+[node name="GlobalPauseController" type="Node" parent="."]
+process_mode = 3
+script = ExtResource("4_pause")
+
+[node name="FirstLevelHUD" parent="." instance=ExtResource("5_hud")]

@@ -225,7 +225,7 @@ func _test_static_rows_and_identity() -> void:
 	_check(controller.position == Vector2(408, 64) and controller.size == Vector2(380, 160)
 		and controller.get_global_rect().end.y == 224.0,
 		"Fixed queue panel fits the top center above the map at y230")
-	var types: Array[String] = ["延伸菌路", "远程攻击芽", "连接菌结"]
+	var types: Array[String] = ["延伸菌路", "远处攻击芽", "连接菌结"]
 	for index: int in range(3):
 		var entry: Dictionary = queue.get_request(ids[index])
 		var row: Button = _row(controller, index)

@@ -244,7 +244,7 @@ func _observe(level: Node2D, label: String, resources: bool = false) -> Dictiona
 		"label": label, "active": true, "initial_resources": 0,
 		"initial_core": int(level.mother_core.nutrition),
 		"ordinary_initial": ORDINARY_NUTRITION if resources else 0,
-		"shots": 0, "shots_by_weapon": {}, "growth_investments": {},
+		"shots": 0, "nutrition_spent": 0, "shots_by_weapon": {}, "growth_investments": {},
 		"batches": {}, "production": [], "arrivals": [], "return_packets": {},
 		"packet_arrivals": {}, "packet_interruptions": {}, "packet_callbacks": [],
 		"matured": [], "watched_weapons": {}, "remote_transitions": [],
@@ -369,10 +369,11 @@ func _watch_weapon(weapon: SporeWeapon, evidence: Dictionary) -> void:
 	if watched.has(weapon_id):
 		return
 	watched[weapon_id] = true
-	weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void:
+	weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
 		if not bool(evidence["active"]):
 			return
 		evidence["shots"] = int(evidence["shots"]) + 1
+		evidence["nutrition_spent"] = int(evidence["nutrition_spent"]) + spent
 		var counts: Dictionary = evidence["shots_by_weapon"]
 		counts[weapon_id] = int(counts.get(weapon_id, 0)) + 1
 		weapon.get_node("FireTimer").stop())
@@ -466,7 +467,7 @@ func _resource_snapshot(level: Node2D, evidence: Dictionary) -> Dictionary:
 		"combat_transit": 0, "growth_transit": 0, "cultivation_transit": 0,
 		"organ_stock": 0, "growth_buffer": 0, "cultivation_buffer": 0,
 		"startup_reserved": 0, "network_structure": 0, "organ_structure": 0,
-		"shots_consumed": int(evidence["shots"]) * SporeWeapon.SHOT_NUTRITION,
+		"shots_consumed": int(evidence["nutrition_spent"]),
 		"carcass_source_including_reserved": 0, "live_carcass_batches": 0, "ordinary_remains": 0,
 		"digestive_queue_including_active_digest": int(level.digestive_organ.get_queued_nutrition()),
 		"digestive_products_queued": 0, "return_transit": 0,

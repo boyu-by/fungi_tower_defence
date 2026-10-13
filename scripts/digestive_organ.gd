@@ -10,6 +10,8 @@ signal selection_requested
 signal digestion_changed(snapshot: Dictionary)
 signal digestion_started(task_id: String, chamber_id: int, input_id: String, nutrition: int)
 signal digestion_completed(task_id: String, chamber_id: int, product_id: String, nutrition: int)
+signal health_changed(current: float, maximum: float)
+signal tissue_destroyed(tissue: Node2D)
 
 const MAX_OUTPUT_PRODUCTS: int = 2
 const MAX_OUTPUT_NUTRITION: int = 20
@@ -20,7 +22,17 @@ const EXPANSION_DURATION: float = 3.0
 @export var core_edge: HyphaEdge
 @export_range(1, 10, 1) var capacity: int = 4
 @export var colony_capabilities: ColonyCapabilities
+@export var max_health: float = 60.0:
+	set(value):
+		if not is_finite(value) or value <= 0.0 or max_health == value:
+			return
+		max_health = value
+		_health = minf(_health, value) if _health_was_changed else value
+		health_changed.emit(health, max_health)
 
+var health: float:
+	get:
+		return _health
 var incoming_remains: int = 0
 var digested_count: int = 0
 var total_nutrition_produced: int = 0
@@ -29,6 +41,8 @@ var enabled: bool = true
 # 活动输入仍在 intake 中，直到预留和输入一起原子地换成产物。
 var _queue: Array[Dictionary] = []
 var _input_claims: Dictionary[String, String] = {}
+var _incoming_claims: Dictionary[String, int] = {}
+var _used_incoming_claims: Dictionary[String, bool] = {}
 var _tasks: Array[Dictionary] = [{}, {}]
 var _products: Dictionary[String, Dictionary] = {}
 var _product_order: Array[String] = []
@@ -37,6 +51,7 @@ var _next_input_serial: int = 1
 var _next_task_serial: int = 1
 var _next_product_serial: int = 1
 var _next_expansion_serial: int = 1
+var _resume_pending: bool = false
 var _generation: int = 0
 var _intake_generation: int = 0
 var _expansion_state: StringName = &"locked"
@@ -50,6 +65,12 @@ var _is_notifying: bool = false
 var _is_resetting: bool = false
 var _is_exiting: bool = false
 var _gain_tween: Tween
+var _health: float = 60.0
+var _health_was_changed: bool = false
+var _host: HyphaNode
+var _host_paused: bool = false
+var _paused_expansion_remaining: float = 0.0
+var _destroyed_inventory_cleared: bool = false
 
 @onready var digest_timer: Timer = $DigestTimer
 @onready var second_digest_timer: Timer = $SecondDigestTimer
@@ -61,11 +82,20 @@ var _gain_tween: Tween
 
 
 func _enter_tree() -> void:
+	add_to_group("colony_tissues")
 	_is_exiting = false
 	_resume_current_generation.call_deferred(_generation)
 
 
+func _process(_delta: float) -> void:
+	if _resume_pending:
+		_resume_pending = false
+		_resume_current_generation(_generation)
+
+
 func _ready() -> void:
+	_bind_host()
+	_sync_host_state()
 	configure_capabilities(colony_capabilities)
 	if not is_instance_valid(self):
 		return
@@ -83,6 +113,165 @@ func _exit_tree() -> void:
 		_expansion_state = &"locked"
 	_disconnect_capability_observation()
 	_stop_gain_feedback()
+	_disconnect_host()
+
+
+func is_attackable() -> bool:
+	return health > 0.0 and not is_queued_for_deletion()
+
+
+func is_functional() -> bool:
+	return is_attackable() and enabled and _host_is_functional()
+
+
+## 休眠只表示没有输入或消化任务；现存输出仍可被绿色回流领取。
+func is_dormant() -> bool:
+	return is_functional() and not _is_resetting and not _is_exiting \
+		and incoming_remains == 0 and _queue.is_empty() and _get_reserved_count() == 0
+
+
+func is_repairable() -> bool:
+	return is_attackable() and health < max_health
+
+
+func take_damage(amount: float) -> float:
+	if not is_finite(amount) or amount <= 0.0 or not is_attackable():
+		return 0.0
+	var actual: float = minf(amount, health)
+	_health = maxf(health - actual, 0.0)
+	_health_was_changed = true
+	if health <= 0.0:
+		# 只作废工作回调；输入、输出和在途领取权留给生命周期账目同步结算。
+		_generation += 1
+		_notification_queue.clear()
+		_release_all_tasks()
+		_cancel_expansion_timer()
+		_disconnect_capability_observation()
+		_stop_gain_feedback()
+		tissue_destroyed.emit(self)
+	if is_instance_valid(self) and not is_queued_for_deletion():
+		health_changed.emit(health, max_health)
+		_queue_state_notifications()
+		_flush_notifications()
+	return actual
+
+
+func heal(amount: float) -> float:
+	if not is_finite(amount) or amount <= 0.0 or not is_repairable():
+		return 0.0
+	var actual: float = minf(amount, max_health - health)
+	_health = minf(health + actual, max_health)
+	_health_was_changed = true
+	health_changed.emit(health, max_health)
+	return actual
+
+
+func get_health_snapshot() -> Dictionary:
+	return {
+		"health": health, "max_health": max_health,
+		"destroyed": health <= 0.0, "functional": is_functional(),
+		"missing_health": maxf(max_health - health, 0.0), "damaged": health < max_health,
+	}
+
+
+## 根生命周期先结算在途产物，再领取此刻实际留在胃中的损失；每份实物只返回一次。
+func clear_destroyed_inventory() -> Dictionary:
+	var losses: Dictionary = {
+		"input_nutrition": 0, "output_nutrition": 0,
+		"input_count": 0, "output_count": 0, "incoming_count": 0,
+	}
+	if health > 0.0 or _destroyed_inventory_cleared:
+		return losses
+	_destroyed_inventory_cleared = true
+	losses["input_nutrition"] = get_queued_nutrition()
+	losses["output_nutrition"] = get_output_nutrition()
+	losses["input_count"] = get_queued_count()
+	losses["output_count"] = get_output_count()
+	losses["incoming_count"] = incoming_remains
+	_generation += 1
+	_intake_generation += 1
+	_notification_queue.clear()
+	_release_all_tasks()
+	_queue.clear()
+	_products.clear()
+	_product_order.clear()
+	_product_claims.clear()
+	_incoming_claims.clear()
+	incoming_remains = 0
+	_queue_state_notifications()
+	_flush_notifications()
+	return losses
+
+
+func _bind_host() -> void:
+	var host: HyphaNode = get_parent() as HyphaNode
+	if _host == host:
+		return
+	_disconnect_host()
+	_host = host
+	if is_instance_valid(_host):
+		_host.health_changed.connect(_on_host_health_changed)
+
+
+func _disconnect_host() -> void:
+	if is_instance_valid(_host) and _host.health_changed.is_connected(_on_host_health_changed):
+		_host.health_changed.disconnect(_on_host_health_changed)
+	_host = null
+
+
+func _host_is_functional() -> bool:
+	var host: HyphaNode = get_parent() as HyphaNode
+	return host == null or host.is_functional()
+
+
+func _on_host_health_changed(_current: float, _maximum: float) -> void:
+	_sync_host_state()
+
+
+func _sync_host_state() -> void:
+	if not is_attackable() or _is_exiting:
+		return
+	if not _host_is_functional() and not _host_paused:
+		_host_paused = true
+		_generation += 1
+		_notification_queue.clear()
+		for chamber_id: int in range(_tasks.size()):
+			var task: Dictionary = _tasks[chamber_id]
+			if task.is_empty():
+				continue
+			var timer: Timer = _get_chamber_timer(chamber_id)
+			task["paused_remaining"] = timer.time_left
+			timer.stop()
+			var callback: Callable = task["callback"]
+			if timer.timeout.is_connected(callback):
+				timer.timeout.disconnect(callback)
+			task["generation"] = _generation
+		if _expansion_state == &"expanding":
+			_paused_expansion_remaining = chamber_expansion_timer.time_left
+			chamber_expansion_timer.stop()
+			if _expansion_callback.is_valid() and chamber_expansion_timer.timeout.is_connected(_expansion_callback):
+				chamber_expansion_timer.timeout.disconnect(_expansion_callback)
+		_disconnect_capability_observation()
+		_stop_gain_feedback()
+		_queue_state_notifications(false)
+		_flush_notifications()
+	elif _host_is_functional() and _host_paused:
+		_host_paused = false
+		for chamber_id: int in range(_tasks.size()):
+			var task: Dictionary = _tasks[chamber_id]
+			if task.is_empty():
+				continue
+			var callback: Callable = _on_chamber_timeout.bind(chamber_id, _generation, String(task["task_id"]))
+			task["callback"] = callback
+			var timer: Timer = _get_chamber_timer(chamber_id)
+			timer.timeout.connect(callback)
+			timer.start(maxf(float(task.get("paused_remaining", task["duration"])), 0.001))
+			task.erase("paused_remaining")
+		if _expansion_state == &"expanding":
+			_expansion_callback = _on_chamber_expansion_timeout.bind(_generation, _expansion_id)
+			chamber_expansion_timer.timeout.connect(_expansion_callback)
+			chamber_expansion_timer.start(maxf(_paused_expansion_remaining, 0.001))
+		_resume_digestion()
 
 
 ## 仅供旧单腔室手动测试使用；真实 Timer 只绑定带任务身份的回调。
@@ -121,7 +310,7 @@ func _on_chamber_timeout(chamber_id: int, generation: int, task_id: String) -> v
 
 
 func _on_chamber_expansion_timeout(generation: int, expansion_id: String) -> void:
-	if not _is_current_generation(generation) or not enabled or (
+	if not _is_current_generation(generation) or not is_functional() or (
 		_expansion_state != &"expanding" or _expansion_id != expansion_id
 	):
 		return
@@ -175,26 +364,41 @@ func get_waiting_count() -> int:
 	return _queue.size() - _input_claims.size()
 
 
-func reserve_remains() -> bool:
-	if not enabled or _is_resetting or _is_exiting or is_queued_for_deletion() or (
-		_queue.size() + incoming_remains >= capacity
-	):
+func can_reserve_remains() -> bool:
+	return is_functional() and not _is_resetting and not _is_exiting \
+		and not is_queued_for_deletion() and _queue.size() + incoming_remains < capacity
+
+
+func reserve_remains(reservation_id: String = "") -> bool:
+	if not can_reserve_remains() or (not reservation_id.is_empty() and _used_incoming_claims.has(reservation_id)):
 		return false
 	var intake_generation: int = _intake_generation
+	if not reservation_id.is_empty():
+		_used_incoming_claims[reservation_id] = true
+		_incoming_claims[reservation_id] = intake_generation
 	incoming_remains += 1
 	_queue_state_notifications(true, false)
 	_flush_notifications()
 	# 退出/停止保留已提交预留，由调用者复核生命周期后撤销；重置才使它失效。
 	return is_instance_valid(self) and not is_queued_for_deletion() and (
 		_intake_generation == intake_generation and incoming_remains > 0
+		and (reservation_id.is_empty() or owns_remains_reservation(reservation_id))
 	)
 
 
-func complete_delivery(nutrition: int) -> bool:
-	if not enabled or _is_resetting or _is_exiting or is_queued_for_deletion() or nutrition <= 0 or (
+func owns_remains_reservation(reservation_id: String) -> bool:
+	return not reservation_id.is_empty() and incoming_remains > 0 \
+		and _incoming_claims.get(reservation_id, -1) == _intake_generation
+
+
+func complete_delivery(nutrition: int, reservation_id: String = "") -> bool:
+	if not is_functional() or _is_resetting or _is_exiting or is_queued_for_deletion() or nutrition <= 0 or (
 		incoming_remains <= 0 or _queue.size() >= capacity
 	):
 		return false
+	if not _can_settle_incoming(reservation_id):
+		return false
+	_incoming_claims.erase(reservation_id)
 	incoming_remains -= 1
 	var input_id: String = "%d:input:%d" % [get_instance_id(), _next_input_serial]
 	_next_input_serial += 1
@@ -205,9 +409,10 @@ func complete_delivery(nutrition: int) -> bool:
 	return true
 
 
-func cancel_reservation() -> bool:
-	if incoming_remains <= 0:
+func cancel_reservation(reservation_id: String = "") -> bool:
+	if incoming_remains <= 0 or not _can_settle_incoming(reservation_id):
 		return false
+	_incoming_claims.erase(reservation_id)
 	incoming_remains -= 1
 	if _is_exiting or is_queued_for_deletion():
 		_queue_reservation_cleanup_notification()
@@ -215,6 +420,13 @@ func cancel_reservation() -> bool:
 		_queue_state_notifications(true, false)
 	_flush_notifications()
 	return true
+
+
+func _can_settle_incoming(reservation_id: String) -> bool:
+	# 旧无凭据调用只操作旧无凭据预留，不能窃取消化物流的固定输入身份。
+	if reservation_id.is_empty():
+		return incoming_remains > _incoming_claims.size()
+	return owns_remains_reservation(reservation_id)
 
 
 ## 只返回深副本，运输记录不能成为第二份可修改的产物库存。
@@ -240,6 +452,7 @@ func get_output_snapshot() -> Dictionary:
 	var in_transit: int = _product_claims.size()
 	return {
 		"count": get_output_count(), "nutrition": get_output_nutrition(),
+		"dormant": is_dormant(),
 		"reserved_count": _get_reserved_count(), "reserved_nutrition": _get_reserved_nutrition(),
 		"queued_count": get_output_count() - in_transit,
 		"in_transit_count": in_transit, "wait_reason": _get_wait_reason(),
@@ -255,7 +468,9 @@ func get_digestion_snapshot() -> Dictionary:
 		expansion_progress = clampf(1.0 - expansion_remaining / EXPANSION_DURATION, 0.0, 1.0)
 	var chambers: Array[Dictionary] = [_get_chamber_snapshot(0), _get_chamber_snapshot(1)]
 	return {
-		"generation": _generation, "enabled": enabled,
+		"generation": _generation, "enabled": enabled, "functional": is_functional(),
+		"dormant": is_dormant(),
+		"host_paused": _host_paused,
 		"expansion_state": _expansion_state, "expansion_duration": EXPANSION_DURATION,
 		"expansion_remaining": expansion_remaining, "expansion_progress": expansion_progress,
 		"chamber_count": 2 if _expansion_state == &"ready" else 1,
@@ -266,7 +481,7 @@ func get_digestion_snapshot() -> Dictionary:
 
 
 func claim_output_product(product_id: String, claim_id: String) -> bool:
-	if _is_resetting or _is_exiting or is_queued_for_deletion() or (
+	if not is_functional() or _is_resetting or _is_exiting or is_queued_for_deletion() or (
 		claim_id.is_empty() or not _products.has(product_id)
 	):
 		return false
@@ -328,14 +543,18 @@ func reset() -> void:
 	_products.clear()
 	_product_order.clear()
 	_product_claims.clear()
+	_incoming_claims.clear()
 	incoming_remains = 0
 	digested_count = 0
 	total_nutrition_produced = 0
 	_expansion_state = &"locked"
 	enabled = true
+	_host_paused = false
+	_paused_expansion_remaining = 0.0
 	_is_resetting = false
 	# 换观察身份但不查询旧轮次成熟能力；配置或后续阶段事件再刷新。
 	_bind_capability_observation()
+	_sync_host_state()
 	_queue_state_notifications()
 	_flush_notifications()
 
@@ -358,6 +577,11 @@ func stop_processing() -> void:
 func _resume_current_generation(generation: int) -> void:
 	if not _is_current_generation(generation):
 		return
+	if not can_process():
+		_resume_pending = true
+		return
+	_bind_host()
+	_sync_host_state()
 	_resume_digestion()
 
 
@@ -410,6 +634,10 @@ func _start_next_digestion() -> void:
 
 
 func _get_wait_reason() -> StringName:
+	if not is_attackable():
+		return &"destroyed"
+	if not _host_is_functional():
+		return &"host_destroyed"
 	var chamber_count: int = 2 if _expansion_state == &"ready" else 1
 	if _get_reserved_count() >= chamber_count:
 		return &"empty"
@@ -471,8 +699,10 @@ func _get_chamber_snapshot(chamber_id: int) -> Dictionary:
 	var duration: float = 0.0
 	var remaining: float = 0.0
 	var progress: float = 0.0
-	if not enabled or _is_exiting:
+	if not enabled or not is_attackable() or _is_exiting:
 		state = &"stopped"
+	elif not _host_is_functional():
+		state = &"host_paused"
 	elif not unlocked:
 		state = _expansion_state
 	elif not task.is_empty():
@@ -486,6 +716,12 @@ func _get_chamber_snapshot(chamber_id: int) -> Dictionary:
 		var wait_reason: StringName = _get_idle_wait_reason()
 		if wait_reason != &"empty":
 			state = wait_reason
+		elif is_dormant():
+			state = &"dormant"
+	if state == &"host_paused" and not task.is_empty():
+		duration = float(task["duration"])
+		remaining = clampf(float(task.get("paused_remaining", duration)), 0.0, duration)
+		progress = clampf(1.0 - remaining / maxf(duration, 0.001), 0.0, 1.0)
 	return {
 		"chamber_id": chamber_id, "unlocked": unlocked, "state": state,
 		"task_id": String(task.get("task_id", "")), "input_id": String(task.get("input_id", "")),
@@ -591,13 +827,16 @@ func _get_expansion_remaining() -> float:
 	if _expansion_state != &"expanding":
 		return 0.0
 	var remaining: float = 0.0
-	if is_instance_valid(chamber_expansion_timer):
+	if _host_paused:
+		remaining = _paused_expansion_remaining
+	elif is_instance_valid(chamber_expansion_timer):
 		remaining = chamber_expansion_timer.time_left
 	return clampf(remaining, 0.0, EXPANSION_DURATION)
 
 
 func _can_process() -> bool:
-	return enabled and not _is_resetting and not _is_exiting and not is_queued_for_deletion() and (
+	return is_functional() and not _host_paused and not _is_resetting and not _is_exiting \
+		and not is_queued_for_deletion() and (
 		is_inside_tree() and is_instance_valid(digest_timer) and is_instance_valid(second_digest_timer)
 		and is_instance_valid(chamber_expansion_timer)
 	)

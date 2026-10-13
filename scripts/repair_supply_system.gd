@@ -18,6 +18,8 @@ class TaskAccount:
 	var source: MotherCore
 	var source_id: int = 0
 	var network: NetworkSystem
+	var target: Node2D
+	var target_id: int = 0
 	var edge: HyphaEdge
 	var edge_id: int = 0
 	var point: Node2D
@@ -44,6 +46,8 @@ class Shipment:
 	var source: MotherCore
 	var source_id: int = 0
 	var receiver: RepairSystem
+	var target: Node2D
+	var target_id: int = 0
 	var edge: HyphaEdge
 	var edge_id: int = 0
 	var point: Node2D
@@ -176,7 +180,7 @@ func _on_network_changed() -> void:
 
 func _on_dependency_exiting(node_id: int) -> void:
 	for account: TaskAccount in _accounts.values():
-		if not account.closed and (account.source_id == node_id or account.edge_id == node_id \
+		if not account.closed and (account.source_id == node_id or account.target_id == node_id \
 				or account.point_id == node_id or _object_id(account.network) == node_id):
 			_stop_account(account)
 	_emit_supply_changed()
@@ -267,6 +271,10 @@ func get_supply_snapshot() -> Dictionary:
 			reserved = source.get_nutrition_reservation(account.budget_key)
 	return {
 		"task_id": account.task_id if account != null else 0,
+		"target": account.target if account != null and is_instance_valid(account.target) else null,
+		"target_id": account.target_id if account != null else 0,
+		"target_name": task_snapshot.get("target_name", ""),
+		"target_kind": task_snapshot.get("target_kind", &""),
 		"edge": account.edge if account != null and is_instance_valid(account.edge) else null,
 		"edge_id": account.edge_id if account != null else 0,
 		"source_core": source if is_instance_valid(source) else null,
@@ -290,6 +298,7 @@ func get_shipment_records() -> Array[Dictionary]:
 		records.append({
 			"shipment_id": shipment.shipment_id, "task_id": shipment.task_id,
 			"source": shipment.source, "source_core": shipment.source, "source_id": shipment.source_id,
+			"target": shipment.target, "target_id": shipment.target_id,
 			"edge": shipment.edge, "edge_id": shipment.edge_id,
 			"repair_point": shipment.point, "final_target": shipment.point, "point_id": shipment.point_id,
 			"receiver": shipment.receiver, "packet": shipment.packet,
@@ -349,9 +358,9 @@ func _capture_current_task() -> void:
 			_current = account
 		return
 	var source: Variant = snapshot.get("source_core")
-	var edge: Variant = snapshot.get("edge")
-	if task_id <= 0 or not _is_alive_source(source) or not _is_live(edge) \
-			or not edge is HyphaEdge or not _is_live(receiver.network_system):
+	var target: Variant = snapshot.get("target", snapshot.get("edge"))
+	if task_id <= 0 or not _is_alive_source(source) or not _is_live(target) \
+			or not target is Node2D or not _is_live(receiver.network_system):
 		return
 	if _current != null and not _current.closed:
 		_stop_account(_current)
@@ -361,8 +370,10 @@ func _capture_current_task() -> void:
 	account.task_id = task_id
 	account.source = source as MotherCore
 	account.source_id = source.get_instance_id()
-	account.edge = edge as HyphaEdge
-	account.edge_id = edge.get_instance_id()
+	account.target = target as Node2D
+	account.target_id = target.get_instance_id()
+	account.edge = target as HyphaEdge
+	account.edge_id = account.edge.get_instance_id() if account.edge != null else 0
 	account.network = receiver.network_system
 	account.generation = _generation
 	account.budget_key = "repair:%d:%d:%d:%d" % [get_instance_id(), _generation, account.receiver_id, task_id]
@@ -372,7 +383,7 @@ func _capture_current_task() -> void:
 	_current = account
 	_ensure_source_binding(account.source)
 	_ensure_network_binding(account.network)
-	_watch_dependency(account.edge)
+	_watch_dependency(account.target)
 	_assign_point(account, snapshot)
 	if not _same_configuration(account):
 		_stop_account(account)
@@ -425,10 +436,11 @@ func _dispatch_one() -> Shipment:
 	if account.source.get_nutrition_reservation(account.budget_key) < PACKET_NUTRITION:
 		_reject("修复营养预留正在等待真实营养收入")
 		return null
-	if _next_shipment_serial >= MAX_SERIAL or not _is_live(account.point) or not _is_live(account.edge):
+	if _next_shipment_serial >= MAX_SERIAL or not _is_live(account.point) or not _is_live(account.target):
 		return null
 	var network: NetworkSystem = account.network
-	var route: NetworkRoute = network.find_available_route_excluding(account.source, account.point, account.edge)
+	var exclusions: Array[HyphaEdge] = account.receiver.get_delivery_exclusions(account.task_id)
+	var route: NetworkRoute = network.find_available_route_avoiding(account.source, account.point, exclusions)
 	if not route.found:
 		return null
 	var container: Node2D = packet_container
@@ -445,7 +457,6 @@ func _dispatch_one() -> Shipment:
 	if not _same_active_account(account):
 		packet.free()
 		return null
-	var exclusions: Array[HyphaEdge] = [account.edge]
 	if not packet.set_route_exclusions(exclusions) or not _same_active_account(account):
 		packet.free()
 		return null
@@ -456,6 +467,8 @@ func _dispatch_one() -> Shipment:
 	shipment.source = account.source
 	shipment.source_id = account.source_id
 	shipment.receiver = account.receiver
+	shipment.target = account.target
+	shipment.target_id = account.target_id
 	shipment.edge = account.edge
 	shipment.edge_id = account.edge_id
 	shipment.point = account.point
@@ -677,7 +690,7 @@ func _same_configuration(account: TaskAccount) -> bool:
 func _same_active_account(account: TaskAccount) -> bool:
 	if account.closed or account.generation != _generation or not _same_configuration(account) \
 			or not _is_alive_source(account.source) or not _is_live(account.network) \
-			or not _is_live(account.edge) or not account.receiver.has_active_task():
+			or not _is_live(account.target) or not account.receiver.has_active_task():
 		return false
 	var snapshot: Dictionary = account.receiver.get_task_snapshot()
 	return _same_identity(account, snapshot)
@@ -685,8 +698,10 @@ func _same_active_account(account: TaskAccount) -> bool:
 
 func _same_identity(account: TaskAccount, snapshot: Dictionary) -> bool:
 	if int(snapshot.get("task_id", 0)) != account.task_id or snapshot.get("source_core") != account.source \
-			or snapshot.get("edge") != account.edge or not _is_live(account.edge) \
-			or not _is_live(account.network) or not account.network.is_edge_valid(account.edge):
+			or snapshot.get("target", snapshot.get("edge")) != account.target \
+			or int(snapshot.get("target_id", snapshot.get("edge_id", 0))) != account.target_id \
+			or not _is_live(account.target) or not _is_live(account.network) \
+			or not account.receiver.is_target_valid(account.task_id):
 		return false
 	return account.point_id == 0 or (_is_live(account.point) \
 		and snapshot.get("repair_point") == account.point \
@@ -694,10 +709,11 @@ func _same_identity(account: TaskAccount, snapshot: Dictionary) -> bool:
 
 
 func _same_shipment_identity(shipment: Shipment) -> bool:
-	return _is_live(shipment.point) and _is_live(shipment.edge) \
+	return _is_live(shipment.point) and _is_live(shipment.target) \
 		and _is_live(shipment.receiver) \
 		and shipment.point_id == shipment.account.point_id and shipment.point == shipment.account.point \
-		and shipment.source == shipment.account.source and shipment.edge == shipment.account.edge \
+		and shipment.source == shipment.account.source and shipment.target == shipment.account.target \
+		and shipment.target_id == shipment.account.target_id \
 		and shipment.receiver.get_delivery_target(shipment.task_id) == shipment.point
 
 

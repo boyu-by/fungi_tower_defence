@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="EnemySpawnEntry" format=3]
+
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="1_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/swarm_enemy.tscn" id="2_enemy"]
+
+[resource]
+script = ExtResource("1_entry")
+enemy_scene = ExtResource("2_enemy")
+group_count = 1
+group_size = 3
+group_interval = 3.0
+member_interval = 0.12
+member_spacing = 24.0
+spawn_point_index = -1

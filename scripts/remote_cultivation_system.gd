@@ -28,6 +28,8 @@ var _start_node: Node2D = null
 var _endpoint: HyphaNode = null
 var _target_position: Vector2 = Vector2.ZERO
 var _network_cost: int = 0
+var _organ_kind: StringName = &"attack"
+var _recipe: Dictionary = CultivationSystem.get_recipe(&"attack")
 var _growth_snapshot: Dictionary = {}
 var _cultivation_snapshot: Dictionary = {}
 var _request_growth: GrowthSystem = null
@@ -37,6 +39,7 @@ var _request_cultivation_supply: CultivationSupplySystem = null
 var _starting_phase: StringName = &""
 var _starting_after_task_id: int = 0
 var _creating_growth: bool = false
+var _handoff_resume_pending: bool = false
 var _handoff_queued: bool = false
 var _handoff_started: bool = false
 var _extension_released: bool = false
@@ -59,6 +62,12 @@ var _growth_blocker: Callable = Callable()
 
 func _ready() -> void:
 	_bind_systems()
+
+
+func _process(_delta: float) -> void:
+	if _handoff_resume_pending:
+		_handoff_resume_pending = false
+		_queue_handoff()
 
 
 func _exit_tree() -> void:
@@ -137,9 +146,9 @@ func _on_cultivation_completed(task_id: int, source: CultivationSystem) -> void:
 			or StringName(_cultivation_snapshot.get("state", &"idle")) != &"completed" \
 			or _cultivation_snapshot.get("host") != _endpoint \
 			or not _node_is_available(_endpoint) \
-			or not _endpoint.get_organ_occupant() is AttackOrgan \
-			or int(_cultivation_snapshot.get("startup_transferred", 0)) != CultivationSystem.STARTUP_COST \
-			or int(_cultivation_snapshot.get("structure_consumed", 0)) != CultivationSystem.STRUCTURE_COST \
+			or not _organ_matches_recipe(_endpoint.get_organ_occupant()) \
+			or int(_cultivation_snapshot.get("startup_transferred", 0)) != int(_recipe["startup_cost"]) \
+			or int(_cultivation_snapshot.get("structure_consumed", 0)) != int(_recipe["structure_cost"]) \
 			or float(_cultivation_snapshot.get("effective_time", 0.0)) < CultivationSystem.MINIMUM_EFFECTIVE_TIME \
 			or int(_cultivation_snapshot.get("buffered_nutrition", 0)) != 0 \
 			or int(_cultivation_snapshot.get("startup_reserved", 0)) != 0:
@@ -174,12 +183,17 @@ func _on_network_changed() -> void:
 	_queue_handoff()
 
 
-func preview_request(start_node: Node2D, target_position: Vector2) -> Dictionary:
+func preview_request(start_node: Node2D, target_position: Vector2, organ_kind: StringName = &"attack") -> Dictionary:
+	var recipe: Dictionary = CultivationSystem.get_recipe(organ_kind)
+	var organ_cost: int = int(recipe.get("total_cost", 0))
 	var result: Dictionary = {
 		"valid": false, "error": "", "start_node": start_node if _node_is_available(start_node) else null,
 		"target_position": target_position, "plan": {}, "network_cost": 0,
-		"organ_cost": CultivationSystem.TOTAL_COST, "total_cost": 0, "remaining_cost": 0,
+		"organ_kind": organ_kind, "organ_cost": organ_cost, "total_cost": 0, "remaining_cost": 0,
 	}
+	if recipe.is_empty():
+		result["error"] = "器官类型无效。"
+		return result
 	if not _configuration_is_valid():
 		result["error"] = "远程培育系统配置尚未就绪。"
 		return result
@@ -195,32 +209,34 @@ func preview_request(start_node: Node2D, target_position: Vector2) -> Dictionary
 	if not growth_system.network_system.is_connected_to_core(start_node):
 		result["error"] = "起点未连接母核。"
 		return result
-	var plan: Dictionary = growth_system.planner.plan(start_node.global_position, target_position, false)
+	var plan: Dictionary = growth_system.preview_target(start_node, target_position)
 	result["plan"] = plan
 	if not bool(plan.get("valid", false)) or float(plan.get("distance", 0.0)) <= 0.0:
 		result["error"] = "无法规划该生长目标：" + String(plan.get("error", "距离必须大于零。"))
 		return result
 	var network_cost: int = int(plan.get("total_cost", 0))
-	if network_cost > MAX_REQUEST_ID - CultivationSystem.TOTAL_COST:
+	if network_cost > MAX_REQUEST_ID - organ_cost:
 		result["error"] = "建设费用超出整数范围。"
 		return result
 	result["network_cost"] = network_cost
-	result["total_cost"] = network_cost + CultivationSystem.TOTAL_COST
+	result["total_cost"] = network_cost + organ_cost
 	result["remaining_cost"] = result["total_cost"]
 	result["valid"] = true
 	return result
 
 
-func request_remote(start_node: Node2D, target_position: Vector2) -> int:
+func request_remote(start_node: Node2D, target_position: Vector2, organ_kind: StringName = &"attack", initial_plan_version: int = 1) -> int:
 	if _transitioning or _resetting or _last_request_id == MAX_REQUEST_ID \
 			or has_active_request() or not _construction_systems_are_idle():
 		return 0
 	_bind_systems()
-	var preview: Dictionary = preview_request(start_node, target_position)
+	var preview: Dictionary = preview_request(start_node, target_position, organ_kind)
 	if not bool(preview["valid"]) or not _construction_systems_are_idle():
 		return 0
 	_begin_request()
 	_start_node = start_node
+	_organ_kind = organ_kind
+	_recipe = CultivationSystem.get_recipe(organ_kind).duplicate(true)
 	_target_position = target_position
 	_network_cost = int(preview["network_cost"])
 	_growth_task_id = 0
@@ -240,7 +256,7 @@ func request_remote(start_node: Node2D, target_position: Vector2) -> int:
 	if _is_current_request(created_id, generation):
 		_starting_phase = &"growth"
 		_creating_growth = true
-		task_id = receiver.create_target(start_node, target_position)
+		task_id = receiver.create_target(start_node, target_position, initial_plan_version)
 		_creating_growth = false
 		_starting_phase = &""
 		if _request_id == created_id and task_id > 0:
@@ -272,11 +288,11 @@ func get_request_snapshot() -> Dictionary:
 	var buffered: int = int(_growth_snapshot.get("buffered_nutrition", 0)) \
 		+ int(_cultivation_snapshot.get("buffered_nutrition", 0))
 	var consumed: int = growth_consumed + structure_consumed + startup_transferred
-	var total: int = _network_cost + CultivationSystem.TOTAL_COST if _request_id > 0 else 0
+	var total: int = _network_cost + int(_recipe["total_cost"]) if _request_id > 0 else 0
 	var progress: float = 0.0
 	if total > 0:
 		progress = clampf((float(_growth_snapshot.get("progress", 0.0)) * _network_cost \
-			+ float(_cultivation_snapshot.get("progress", 0.0)) * CultivationSystem.TOTAL_COST) / total, 0.0, 1.0)
+			+ float(_cultivation_snapshot.get("progress", 0.0)) * int(_recipe["total_cost"])) / total, 0.0, 1.0)
 	if _state == &"completed":
 		progress = 1.0
 	return {
@@ -286,7 +302,9 @@ func get_request_snapshot() -> Dictionary:
 		"extension_released": _extension_released,
 		"endpoint": _endpoint if _node_is_available(_endpoint) else null,
 		"target_position": _target_position, "progress": progress,
-		"network_cost": _network_cost, "organ_cost": CultivationSystem.TOTAL_COST, "total_cost": total,
+		"network_cost": _network_cost, "organ_kind": _organ_kind, "organ_cost": int(_recipe["total_cost"]), "total_cost": total,
+		"plan_version": int(_growth_snapshot.get("plan_version", 1)),
+		"resolved_target_position": _growth_snapshot.get("resolved_target_position", _target_position),
 		"growth_consumed": growth_consumed, "structure_consumed": structure_consumed,
 		"startup_reserved": startup_reserved, "startup_transferred": startup_transferred,
 		"buffered_nutrition": buffered, "consumed_nutrition": consumed,
@@ -360,7 +378,7 @@ func continue_request() -> int:
 			or _last_request_id == MAX_REQUEST_ID or not _construction_systems_are_idle() \
 			or not _request_configuration_is_valid():
 		return 0
-	var availability: StringName = _request_cultivation.get_cultivation_availability(_endpoint)
+	var availability: StringName = _request_cultivation.get_cultivation_availability(_endpoint, _organ_kind)
 	var bud_snapshot: Dictionary = _request_cultivation.get_bud_snapshot(_endpoint)
 	if availability != &"continuable" or int(bud_snapshot.get("task_id", 0)) != _cultivation_task_id:
 		return 0
@@ -400,6 +418,7 @@ func continue_request() -> int:
 
 
 func reset() -> void:
+	_handoff_resume_pending = false
 	if _resetting:
 		return
 	_refresh_snapshots()
@@ -504,6 +523,9 @@ func _handoff(generation: int, request_id: int) -> void:
 	if not _is_current_request(request_id, generation) or _phase != &"connected":
 		return
 	_handoff_queued = false
+	if is_inside_tree() and not can_process():
+		_handoff_resume_pending = true
+		return
 	if _state == &"paused" or _handoff_started or _transitioning:
 		return
 	if not _request_configuration_is_valid():
@@ -529,7 +551,7 @@ func _handoff(generation: int, request_id: int) -> void:
 			or bool(_request_growth_supply.get("_dispatching")):
 		_set_connected_wait_reason(&"settlement_pending")
 		return
-	var availability: StringName = _request_cultivation.get_cultivation_availability(_endpoint)
+	var availability: StringName = _request_cultivation.get_cultivation_availability(_endpoint, _organ_kind)
 	if not _is_current_request(request_id, generation) or _state == &"paused":
 		return
 	if availability != &"ready":
@@ -544,7 +566,7 @@ func _handoff(generation: int, request_id: int) -> void:
 	var endpoint: HyphaNode = _endpoint
 	_starting_after_task_id = int(receiver.get_task_snapshot().get("task_id", 0))
 	_starting_phase = &"cultivation"
-	var task_id: int = receiver.start_cultivation(endpoint)
+	var task_id: int = receiver.start_cultivation(endpoint, _organ_kind)
 	_starting_phase = &""
 	if _request_id == request_id and task_id > 0:
 		_cultivation_task_id = task_id
@@ -811,3 +833,38 @@ func _publish_changed() -> void:
 		_changed_pending = false
 		request_changed.emit(get_request_snapshot())
 	_emitting_changed = false
+
+
+func _organ_matches_recipe(organ: Variant) -> bool:
+	return organ is DigestiveOrgan if _organ_kind == &"digestive" else organ is AttackOrgan
+
+
+func preview_retarget(position: Vector2) -> Dictionary:
+	if not has_active_request() or _phase != &"growth" or _transitioning or _resetting:
+		return {"valid": false, "error": "已接通或正在成熟的器官不能更换宿主。"}
+	if not position.is_finite() or _target_is_near_existing_node(position):
+		return {"valid": false, "error": EXISTING_NODE_REASON}
+	var result: Dictionary = _request_growth.preview_retarget(position)
+	result["organ_kind"] = _organ_kind
+	result["organ_cost"] = int(_recipe["total_cost"])
+	if bool(result.get("valid", false)):
+		result["old_remaining_cost"] = int(result.get("old_remaining_cost", 0)) + int(_recipe["total_cost"])
+		result["new_remaining_cost"] = int(result.get("new_remaining_cost", 0)) + int(_recipe["total_cost"])
+	return result
+
+
+func retarget_target(position: Vector2) -> bool:
+	if not bool(preview_retarget(position).get("valid", false)):
+		return false
+	var old_position: Vector2 = _target_position
+	_transitioning = true
+	_target_position = position
+	var accepted: bool = _request_growth.retarget_target(position)
+	if accepted:
+		_refresh_snapshots()
+		_network_cost = int(_growth_snapshot.get("total_cost", _network_cost))
+	else:
+		_target_position = old_position
+	_transitioning = false
+	_publish_changed()
+	return accepted

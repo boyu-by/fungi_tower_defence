@@ -1236,6 +1236,11 @@ func _test_shared_budget_and_dispatch_ownership(level: Node2D, evidence: Diction
 		return false
 	_assert_dispatch_guards(level, evidence, [first_id, second_id])
 	var organ: AttackOrgan = _left(level).get_node("AttackOrgan") as AttackOrgan
+	# 此处隔离两发战斗储备：固定器官为清醒，不把55秒以上无敌人的运输夹具当作正常战斗。
+	var prior_physics: bool = organ.is_physics_processing()
+	organ.set_physics_process(false)
+	organ.set("_enemy_absence_time", 0.0)
+	organ.call("_set_dormant", false)
 	var stock: int = organ.nutrition
 	_check(stock > 0 and organ.consume_nutrition(stock), "Original organ consumption creates actual shared combat demand")
 	evidence["organ_consumed"] = int(evidence["organ_consumed"]) + stock
@@ -1245,7 +1250,7 @@ func _test_shared_budget_and_dispatch_ownership(level: Node2D, evidence: Diction
 	_repair_supply(level).refresh_budget()
 	var reserve: int = first.growth_supply_system.get_combat_reserve()
 	_check(repair_id > 0 and int(_repair_supply(level).get_supply_snapshot()["reserved_nutrition"]) == 4
-		and reserve == 2 * SporeWeapon.SHOT_NUTRITION
+		and reserve == 2 * organ.get_shot_nutrition_cost()
 		and second.growth_supply_system.get_combat_reserve() == reserve,
 		"Actual damaged edge reserves four repair units while both construction workers share the same two-shot combat reserve")
 	_move_to_fixture_escrow(level, evidence, 4 + reserve + 1)
@@ -1329,6 +1334,7 @@ func _test_shared_budget_and_dispatch_ownership(level: Node2D, evidence: Diction
 	_check(int(evidence["escrow"]) == 0 and level.colony_progress.get_total_recovered() == progress
 		and int(evidence["nested_dispatch_attempts"]) > 0,
 		"All conserved fixture funds return explicitly and recursive debit attempts produced no extra dispatch")
+	organ.set_physics_process(prior_physics)
 	_checkpoint(level, evidence, "fair_original_shared_budget_and_real_protected_business", true)
 	cases.append(_summary(level, evidence, "shared_repair_combat_budget_and_exclusive_dispatch", {
 		"construction_ids": ids, "successful_one_unit_rounds": successful,

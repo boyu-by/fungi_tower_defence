@@ -1,0 +1,56 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/combat_specialization_demo.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/terrain_threat_demo.gd" id="2_demo"]
+[ext_resource type="Script" path="res://scripts/terrain_navigation.gd" id="3_terrain"]
+[ext_resource type="Script" path="res://scripts/frontier_status.gd" id="4_status"]
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="5_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/gnawer_enemy.tscn" id="6_gnawer"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="7_normal"]
+
+[sub_resource type="Resource" id="Entry_gnawer"]
+script = ExtResource("5_entry")
+enemy_scene = ExtResource("6_gnawer")
+group_count = 1
+group_size = 1
+group_interval = 3.0
+spawn_point_index = 2
+
+[sub_resource type="Resource" id="Entry_normal"]
+script = ExtResource("5_entry")
+enemy_scene = ExtResource("7_normal")
+group_count = 2
+group_size = 1
+group_interval = 3.0
+spawn_point_index = -1
+
+[node name="TerrainThreatDemo" instance=ExtResource("1_base")]
+script = ExtResource("2_demo")
+gnawer_batch_entries = Array[ExtResource("5_entry")]([SubResource("Entry_gnawer"), SubResource("Entry_normal")])
+
+[node name="TerrainNavigation" type="Node2D" parent="World"]
+script = ExtResource("3_terrain")
+bounds = Rect2(16, 238, 1168, 398)
+obstacles = Array[Rect2]([Rect2(285, 365, 60, 95), Rect2(845, 375, 60, 95), Rect2(525, 278, 140, 66)])
+z_index = 4
+
+[node name="FrontierStatus" type="Node2D" parent="World"]
+script = ExtResource("4_status")
+
+[node name="East" parent="World/SpawnPoints" index="0"]
+position = Vector2(1090, 290)
+
+[node name="West" parent="World/SpawnPoints" index="1"]
+position = Vector2(150, 280)
+
+[node name="Frontier" type="Marker2D" parent="World/SpawnPoints"]
+position = Vector2(1130, 580)
+
+[node name="EntryLabel" type="Label" parent="World/SpawnPoints/Frontier"]
+offset_left = -96.0
+offset_top = 26.0
+offset_right = 48.0
+offset_bottom = 50.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.94, 0.57, 0.32, 1)
+text = "啃食者入口 ↖"

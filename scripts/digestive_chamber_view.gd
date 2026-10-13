@@ -2,6 +2,7 @@ extends Node
 ## 只读消化快照；时间、输入占有和产物生成均由 DigestiveOrgan 管理。
 
 const IDLE_CAP_COLOR := Color(0.53, 0.32, 0.52, 1.0)
+const DORMANT_CAP_COLOR := Color(0.38, 0.31, 0.41, 1.0)
 const PROCESSING_CAP_COLOR := Color(0.72, 0.40, 0.67, 1.0)
 const BLOCKED_CAP_COLOR := Color(0.67, 0.43, 0.29, 1.0)
 const TOO_LARGE_CAP_COLOR := Color(0.63, 0.31, 0.39, 1.0)
@@ -14,6 +15,7 @@ const MIN_EXPANSION_SCALE := 0.08
 
 var _organ: DigestiveOrgan
 var _visuals_ready: bool = false
+var _queue_label_center_offset: float = 0.0
 
 @onready var _primary_progress: ProgressBar = get_parent().get_node("ProgressBar") as ProgressBar
 @onready var _primary_status: Label = get_parent().get_node("ChamberStatus") as Label
@@ -121,8 +123,9 @@ func _render_snapshot(snapshot: Dictionary, output: Dictionary) -> void:
 		int(output["count"]), int(output["reserved_count"]), DigestiveOrgan.MAX_OUTPUT_PRODUCTS
 	]
 	var visual_center: float = _second_chamber.position.x * 0.5 if _second_chamber.visible else 0.0
-	_queue_label.offset_left = visual_center - 78.0
-	_queue_label.offset_right = visual_center + 78.0
+	# 只追加双腔带来的居中位移，保留演示场景给文字安排的锚点与尺寸。
+	_queue_label.position.x += visual_center - _queue_label_center_offset
+	_queue_label_center_offset = visual_center
 	var wait_reason: StringName = StringName(output["wait_reason"])
 	_queue_label.modulate = BLOCKED_TEXT_COLOR if wait_reason in [
 		&"output_full", &"output_too_large"
@@ -134,6 +137,8 @@ func _state_text(chamber: Dictionary) -> String:
 	match state:
 		&"processing":
 			return "消化 %.1f 秒" % maxf(float(chamber["remaining"]), 0.0)
+		&"dormant":
+			return "休眠·到货唤醒"
 		&"output_full":
 			return "输出已满"
 		&"output_too_large":
@@ -153,6 +158,8 @@ func _cap_color(chamber: Dictionary) -> Color:
 	match state:
 		&"processing":
 			return PROCESSING_CAP_COLOR
+		&"dormant":
+			return DORMANT_CAP_COLOR
 		&"output_full":
 			return BLOCKED_CAP_COLOR
 		&"output_too_large":
@@ -170,7 +177,7 @@ func _text_color(chamber: Dictionary) -> Color:
 			return WORKING_TEXT_COLOR
 		&"output_full", &"output_too_large":
 			return BLOCKED_TEXT_COLOR
-		&"stopped", &"locked":
+		&"stopped", &"locked", &"dormant":
 			return STOPPED_TEXT_COLOR
 		_:
 			return NORMAL_TEXT_COLOR

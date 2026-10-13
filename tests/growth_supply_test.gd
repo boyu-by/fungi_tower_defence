@@ -280,9 +280,9 @@ func _test_actual_delivery_and_completion() -> void:
 
 
 func _test_combat_reserve_and_battle_supply() -> void:
-	var fixture: Fixture = _new_fixture(2 * SporeWeapon.SHOT_NUTRITION, 1)
+	var fixture: Fixture = _new_fixture(2, 1)
 	_create_target(fixture)
-	_check(fixture.supply.get_combat_reserve() == 2 * SporeWeapon.SHOT_NUTRITION
+	_check(fixture.supply.get_combat_reserve() == 2 * fixture.organs[0].get_shot_nutrition_cost()
 		and fixture.supply.get_available_growth_nutrition() == 0,
 		"Empty active organ did not reserve two shots")
 	_check(not _dispatch(fixture) and fixture.source.nutrition == 2,

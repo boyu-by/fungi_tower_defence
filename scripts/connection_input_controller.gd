@@ -144,6 +144,9 @@ func select_endpoint(endpoint: HyphaNode) -> bool:
 		return true
 	var preview: Dictionary = _preview_endpoint(endpoint, endpoint.global_position)
 	_publish_preview(preview)
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("连接预览已保留：恢复全局暂停后，再点击第二个菌结确认。")
+		return false
 	if not bool(preview.get("valid", false)):
 		notice.emit(String(preview.get("error", "连接不可创建")))
 		return false

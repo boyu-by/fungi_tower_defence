@@ -65,7 +65,7 @@ func _on_dispatch_timer_timeout() -> void:
 	for offset: int in range(organ_ids.size()):
 		var organ_id: int = organ_ids[(start_index + offset) % organ_ids.size()]
 		var organ: AttackOrgan = _get_registered_organ(organ_id)
-		if organ == null or not organ.can_process() or not organ.needs_supply():
+		if organ == null or not organ.is_combat_active() or not organ.needs_supply():
 			continue
 		var current_index: int = _organ_order.find(organ_id)
 		_next_organ_index = (current_index + 1) % _organ_order.size()
@@ -118,6 +118,16 @@ func unregister_organ(organ: AttackOrgan) -> void:
 	_remove_organ_registration(organ.get_instance_id())
 
 
+## 展示观察者可检查停派状态，不需要读取或改写内部结算标志。
+func is_stopped() -> bool:
+	return _is_exiting or _resetting or not is_inside_tree() or is_queued_for_deletion()
+
+
+func has_registered_organ(organ: Variant) -> bool:
+	return is_instance_valid(organ) and organ is AttackOrgan \
+		and not organ.is_queued_for_deletion() and _organs.get(organ.get_instance_id()) == organ
+
+
 func get_registered_organs() -> Array[AttackOrgan]:
 	_prune_organs()
 	var organs: Array[AttackOrgan] = []
@@ -140,7 +150,7 @@ func get_active_organs() -> Array[AttackOrgan]:
 	var source: MotherCore = mother_core
 	var transport_network: NetworkSystem = network_system
 	for organ: AttackOrgan in organs:
-		if organ.can_process() and _find_supply_route(source, organ, transport_network).found:
+		if organ.is_combat_active() and _find_supply_route(source, organ, transport_network).found:
 			active.append(organ)
 	return active
 
@@ -167,6 +177,8 @@ func _dispatch_packet(receiver: AttackOrgan, show_rejection: bool) -> bool:
 		return _reject("母核无法提供营养：母核无效或生命值已归零", show_rejection)
 	if not _is_registered_organ(receiver):
 		return _reject("供养器官无效或尚未登记", show_rejection)
+	if not receiver.is_combat_active():
+		return _reject("供养器官已暂停或武器无法工作", show_rejection)
 	if not is_instance_valid(packet_container) or (
 			packet_container.is_queued_for_deletion() or packet_scene == null):
 		return _reject("供养系统缺少营养包配置", show_rejection)
@@ -195,9 +207,10 @@ func _dispatch_packet(receiver: AttackOrgan, show_rejection: bool) -> bool:
 	var packet: NutrientPacket = instance as NutrientPacket
 	packet.traffic_required = require_traffic
 	if attempt_epoch != _reset_epoch or not _traffic_configuration_is_valid(transport_network, dispatcher, require_traffic) \
-			or not _is_alive_source(source) or not _is_registered_organ(receiver):
+			or not _is_alive_source(source) or not _is_registered_organ(receiver) \
+			or not receiver.is_combat_active():
 		packet.free()
-		return _reject("母核或供养器官已退出", show_rejection)
+		return _reject("母核或供养器官当前无法工作", show_rejection)
 	var shipment: Shipment = Shipment.new()
 	shipment.source = source
 	shipment.receiver = receiver
@@ -215,11 +228,12 @@ func _dispatch_packet(receiver: AttackOrgan, show_rejection: bool) -> bool:
 		return _reject("库存与在途供养已占满容量", show_rejection)
 	if attempt_epoch != _reset_epoch or not _is_registered_organ(receiver) or _is_exiting \
 			or not _is_alive_source(source) \
-			or not _traffic_configuration_is_valid(transport_network, dispatcher, require_traffic):
+			or not _traffic_configuration_is_valid(transport_network, dispatcher, require_traffic) \
+			or not receiver.is_combat_active():
 		if is_instance_valid(receiver):
 			receiver.cancel_reservation(PACKET_NUTRITION)
 		packet.free()
-		return _reject("母核或供养器官已退出", show_rejection)
+		return _reject("母核或供养器官当前无法工作", show_rejection)
 	if not source.try_spend_nutrition(PACKET_NUTRITION):
 		if is_instance_valid(receiver):
 			receiver.cancel_reservation(PACKET_NUTRITION)
@@ -233,6 +247,7 @@ func _dispatch_packet(receiver: AttackOrgan, show_rejection: bool) -> bool:
 	packet.tree_exiting.connect(_on_packet_removed.bind(shipment_id))
 
 	# 库存或余额信号可能已注销接收者；仍由统一的一次性结算归还资源。
+	# 此处已付款，暂停工作只阻止新派发，不取消合法在途包。
 	if attempt_epoch != _reset_epoch or not _is_registered_organ(receiver) or _is_exiting or (
 			not is_instance_valid(container) or container.is_queued_for_deletion()):
 		_cancel_shipment(shipment_id)
@@ -450,3 +465,14 @@ func _discard_passage_tracking(shipment: Shipment) -> void:
 	var tracker: CargoPassageTracker = shipment.cargo_tracker_ref.get_ref() as CargoPassageTracker
 	if is_instance_valid(tracker):
 		tracker.discard_cargo(shipment.cargo_id, shipment.cargo_generation)
+
+
+## 移植正式出发前，沿每包原付款来源退役旧弹药；不动器官本地库存。
+func cancel_organ_shipments(organ: AttackOrgan) -> void:
+	if not is_instance_valid(organ):
+		return
+	var identity: int = organ.get_instance_id()
+	for shipment_id: int in _shipments.keys():
+		var shipment: Shipment = _shipments.get(shipment_id)
+		if shipment != null and shipment.receiver_id == identity:
+			_cancel_shipment(shipment_id)

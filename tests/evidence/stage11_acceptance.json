@@ -1,0 +1,293 @@
+{
+  "date": "2026-10-13",
+  "model_configuration": {
+    "main": "gpt-6-astra / max",
+    "writers": "writer / gpt-6.1-sol / max",
+    "writer_count": 3,
+    "fork_turns": "none",
+    "model_overrides": false
+  },
+  "automatic": [
+    {
+      "test": "stage11_flow_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage11_pause_ui_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage11_map_guide_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage11_integration_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "growth_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "connection_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "cultivation_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "remote_cultivation_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "differentiation_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "repair_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "construction_queue_input_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "construction_queue_integration_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage10_growth_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage10_production_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage10_operations_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "stage10_integration_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "remote_cultivation_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    },
+    {
+      "test": "parallel_digestion_test",
+      "passed": true,
+      "diagnostics": [],
+      "failures": []
+    }
+  ],
+  "normal_play": {
+    "completed_waves": 6,
+    "core_health": 240,
+    "elapsed_seconds": 469.81155566653,
+    "flow": {
+      "active": 0,
+      "batch_generation": 6,
+      "batch_id": "82107697050:6",
+      "can_start": false,
+      "completed_waves": 6,
+      "defeated": 16,
+      "next_direction": "",
+      "next_title": "",
+      "planned": 16,
+      "preparation_remaining": 0.0,
+      "reason": "",
+      "removed": 0,
+      "spawned": 16,
+      "state": "victory_candidate",
+      "total_defeated": 66,
+      "unspawned": 0,
+      "wave_index": 6,
+      "wave_total": 6
+    },
+    "mature_organs": 5,
+    "reached_wave": 6,
+    "resources": {
+      "accounted_total": 544,
+      "balanced": true,
+      "combat": {
+        "nutrition_spent": 156,
+        "projectiles": 114,
+        "rounds": 112
+      },
+      "enemy_created_nutrition": 264,
+      "error": 0,
+      "expected_total": 544,
+      "initial_total": 280,
+      "parts": {
+        "carcass_stock": 0,
+        "combat_consumed": 156,
+        "combat_transit": 3,
+        "core": 239,
+        "cultivation_buffer": 0,
+        "cultivation_transit": 0,
+        "decayed_remains": 16,
+        "destroyed_stomach_intake": 0,
+        "destroyed_stomach_output": 0,
+        "differentiation_buffer": 0,
+        "differentiation_consumed": 24,
+        "differentiation_transit": 0,
+        "ground_remains": 0,
+        "growth_buffer": 0,
+        "growth_transit": 0,
+        "network_structure": 63,
+        "organ_stock": 5,
+        "organ_structure": 24,
+        "output_queued": 0,
+        "remains_transit": 8,
+        "removed_organ_stock": 2,
+        "repair_buffer": 0,
+        "repair_consumed": 0,
+        "repair_transit": 0,
+        "return_transit": 4,
+        "startup_reserved": 0,
+        "stomach_intake": 0,
+        "transplant_buffer": 0,
+        "transplant_consumed": 0,
+        "transplant_lost": 0,
+        "transplant_stock": 0,
+        "transplant_transit": 0
+      },
+      "valid": true
+    },
+    "stage_name": "成熟",
+    "total_defeated": 66,
+    "total_recovered": 436,
+    "victory": true,
+    "elapsed_formatted": "07:49.81",
+    "modifications": "Normal UI commands only; no resource/damage/time injection",
+    "tissue_attacks": 25,
+    "network_breaks": 2,
+    "unbalanced_samples": 0,
+    "samples_at_saved_result": 1230
+  },
+  "first_play_failure": {
+    "elapsed_seconds": 194.592009333316,
+    "wave": 3,
+    "cause": "core contact blind spot after frontline differentiation",
+    "fix": "initial left/right organs shifted to (470,480)/(730,480); no health/nutrition/weapon stat changes"
+  },
+  "actual_pause": {
+    "paused_samples": 149,
+    "wall_span_seconds": 74.468,
+    "stable": {
+      "elapsed_seconds": true,
+      "flow": true,
+      "ledger": true,
+      "organs": true,
+      "enemies": true,
+      "construction": true
+    },
+    "nutrition": 262,
+    "game_seconds": 253.509874666598,
+    "flow": {
+      "active": 1,
+      "batch_generation": 4,
+      "batch_id": "82107697050:4",
+      "can_start": false,
+      "completed_waves": 3,
+      "defeated": 9,
+      "next_direction": "正面持续施压，啃食者随小型群体从侧前方逼近组织。",
+      "next_title": "第五波 · 啃食绕入",
+      "planned": 12,
+      "preparation_remaining": 0.0,
+      "reason": "",
+      "removed": 0,
+      "spawned": 10,
+      "state": "fighting",
+      "total_defeated": 33,
+      "unspawned": 2,
+      "wave_index": 4,
+      "wave_total": 6
+    }
+  },
+  "actual_restart": {
+    "colony": {
+      "core_health": 240,
+      "core_max_health": 240,
+      "elapsed_seconds": 38.6813282499905,
+      "nutrition": 72,
+      "stage_name": "初生",
+      "total_recovered": 0
+    },
+    "flow": {
+      "active": 0,
+      "batch_generation": -1,
+      "batch_id": "",
+      "can_start": true,
+      "completed_waves": 0,
+      "defeated": 0,
+      "next_direction": "敌人从正面入口来袭。",
+      "next_title": "第一波 · 正面试探",
+      "planned": 0,
+      "preparation_remaining": 0.0,
+      "reason": "",
+      "removed": 0,
+      "spawned": 0,
+      "state": "initial_preparation",
+      "total_defeated": 0,
+      "unspawned": 0,
+      "wave_index": 0,
+      "wave_total": 6
+    },
+    "guide": {
+      "current_event": "",
+      "enabled": true,
+      "seen": [],
+      "text": "",
+      "visible": false
+    },
+    "instance_id": 708053863237916,
+    "paused": false
+  },
+  "final_import": {
+    "passed": true
+  },
+  "delivery": {
+    "default_scene": "res://scenes/levels/first_level.tscn",
+    "engine": "/Users/xuxiang/Downloads/Godot.app/Contents/MacOS/Godot",
+    "native_ui_verified": "initial_preparation, core240, nutrition72, recovered0, 0/6, unpaused, no spawned enemies",
+    "diagnostics": []
+  }
+}

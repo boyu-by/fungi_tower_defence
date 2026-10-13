@@ -176,6 +176,9 @@ func select_request(construction_id: String) -> bool:
 
 
 func move_selected(direction: int) -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if direction != -1 and direction != 1:
 		return false
 	var selected: Dictionary = _selected_entry()
@@ -187,6 +190,9 @@ func move_selected(direction: int) -> bool:
 
 
 func pause_selected() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	var selected: Dictionary = _selected_entry()
 	if selected.is_empty() or StringName(selected.get("state", &"")) not in [&"waiting", &"executing", &"maturing"]:
 		return false
@@ -198,6 +204,9 @@ func pause_selected() -> bool:
 
 
 func resume_selected() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	var selected: Dictionary = _selected_entry()
 	if selected.is_empty() or StringName(selected.get("state", &"")) != &"paused":
 		return false
@@ -209,6 +218,9 @@ func resume_selected() -> bool:
 
 
 func cancel_selected() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	var selected: Dictionary = _selected_entry()
 	if selected.is_empty():
 		return false
@@ -358,6 +370,9 @@ func _refresh_maturing_selector() -> void:
 
 func _kind_text(entry: Dictionary) -> String:
 	var kind: StringName = StringName(entry.get("kind", &""))
+	if kind in [&"remote_cultivation", &"cultivation"]:
+		var organ_kind: StringName = entry.get("parameters", {}).get("organ_kind", &"attack")
+		return ("远处" if kind == &"remote_cultivation" else "培育") + ("胃囊" if organ_kind == &"digestive" else "攻击芽")
 	return String(KIND_TEXT.get(kind, String(kind)))
 
 

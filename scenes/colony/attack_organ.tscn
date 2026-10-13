@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/attack_organ.gd" id="1_organ"]
+[ext_resource type="Script" path="res://scripts/organ_differentiation_view.gd" id="2_differentiation_view"]
 
 [sub_resource type="RectangleShape2D" id="Rectangle_hit"]
 size = Vector2(46, 52)
@@ -74,5 +75,9 @@ collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitArea"]
 shape = SubResource("Rectangle_hit")
+
+[node name="DifferentiationView" type="Node2D" parent="." node_paths=PackedStringArray("organ")]
+script = ExtResource("2_differentiation_view")
+organ = NodePath("..")
 
 [connection signal="input_event" from="HitArea" to="." method="_on_hit_area_input_event"]

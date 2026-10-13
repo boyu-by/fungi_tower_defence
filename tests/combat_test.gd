@@ -148,6 +148,8 @@ func _test_empty_inventory_and_missing_target() -> void:
 	await _wait_frames(18)
 	_check(level.get_node("World/Projectiles").get_child_count() == 0, "Lifetime timer failed")
 	_check(enemy.health == 24, "Expired projectile applied damage")
+	_check(int(level.combat_targeting_system.get_snapshot()["total_count"]) == 0,
+		"Lost targets and expired shots leave no shared incoming damage")
 	await _remove_level(level)
 
 
@@ -199,6 +201,11 @@ func _test_defeat_and_restart() -> void:
 		"Restart did not reset core")
 	_check(level.attack_organ.nutrition == 4 and level.enemy_spawner.spawned_count == 0,
 		"Restart did not reset combat stock and counters")
+	_check(level.get_combat_statistics() == {"rounds": 0, "projectiles": 0, "nutrition_spent": 0},
+		"Restart did not clear round, projectile and actual-spend statistics")
+	_check(level.combat_targeting_system.is_accepting()
+		and int(level.combat_targeting_system.get_snapshot()["total_count"]) == 0,
+		"Restart begins with an accepting empty targeting ledger")
 	_check(level.get_node("World").process_mode != Node.PROCESS_MODE_DISABLED, "Restart remained frozen")
 	await _remove_level(level)
 
@@ -210,12 +217,19 @@ func _test_default_wave() -> void:
 	root.add_child(level)
 	current_scene = level
 	var shots := [0]
+	var combat_cost := [0]
+	var projectiles := [0]
 	var completions := [0]
 	var initial_resources: int = level.mother_core.nutrition
 	for organ in level.supply_system.get_registered_organs():
 		initial_resources += organ.nutrition
 	for current_weapon in level.get_weapons():
-		current_weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
+		_check(current_weapon.targeting_required and current_weapon.targeting_system == level.combat_targeting_system,
+			"Default weapons use the same required targeting ledger")
+		current_weapon.volley_committed.connect(func(_shot_id: String, spent: int, count: int) -> void:
+			shots[0] += 1
+			combat_cost[0] += spent
+			projectiles[0] += count)
 	level.enemy_spawner.wave_finished.connect(func() -> void: completions[0] += 1)
 	for frame in range(1800):
 		if completions[0] > 0 or level.mother_core.health == 0:
@@ -229,20 +243,25 @@ func _test_default_wave() -> void:
 	_check(level.hud.battle_label.text.contains("本轮防守成功"), "Wave result not displayed")
 	_check(level.get_node("World/Enemies").get_child_count() == 0, "Wave left enemies")
 	_check(level.get_node("World/Projectiles").get_child_count() == 0, "Wave left projectiles")
+	_check(int(level.combat_targeting_system.get_snapshot()["total_count"]) == 0,
+		"Completed default defense leaves no prepared or committed damage records")
 	_check(shots[0] >= 12, "Default wave applied damage without enough shots")
 	var in_transit: int = level.supply_system.get_in_transit_count()
 	var recovered: int = level.digestive_organ.total_nutrition_produced
 	var stored: int = 0
 	for organ in level.supply_system.get_registered_organs():
 		stored += organ.nutrition
-	_check(level.mother_core.nutrition + stored + in_transit + shots[0]
+	_check(level.mother_core.nutrition + stored + in_transit + combat_cost[0]
 		+ level.digestive_organ.get_output_nutrition() == initial_resources + recovered,
 		"Combat and supply failed resource conservation")
 	_check(level.supply_system.delivered_packets > 0, "Combat never used automatic supply")
+	_check(level.get_combat_statistics() == {"rounds": shots[0], "projectiles": projectiles[0],
+		"nutrition_spent": combat_cost[0]}, "Formal level statistics use actual committed round receipts")
 	full_wave_result = {
 		"spawned": level.enemy_spawner.spawned_count,
 		"defeated": level.enemy_spawner.defeated_count,
 		"shots": shots[0],
+		"projectiles": projectiles[0], "nutrition_spent": combat_cost[0],
 		"core_health": level.mother_core.health,
 		"core_nutrition": level.mother_core.nutrition,
 		"local_nutrition": stored,

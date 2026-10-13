@@ -5,6 +5,7 @@ extends Node2D
 ## 损伤和临时禁行都保留边与端点；只有零生命值阻断正常通行。
 signal traffic_settings_changed
 signal health_changed(current: float, maximum: float)
+signal tissue_destroyed(tissue: Node2D)
 
 const VEIN_THRESHOLDS: Array[int] = [20, 60]
 const VEIN_CAPACITIES: Array[int] = [2, 3, 4]
@@ -61,6 +62,11 @@ var _open_color: Color = Color(0.44313726, 0.60784316, 0.4745098, 1)
 @onready var vein: Line2D = $Vein
 
 
+func _enter_tree() -> void:
+	if not Engine.is_editor_hint():
+		add_to_group("colony_tissues")
+
+
 func _ready() -> void:
 	_capture_vein_style()
 	_update_vein_width()
@@ -106,6 +112,10 @@ func take_damage(amount: float) -> float:
 	var actual: float = minf(amount, health)
 	_health = maxf(health - actual, 0.0)
 	_health_was_changed = true
+	if health <= 0.0:
+		tissue_destroyed.emit(self)
+	if not is_instance_valid(self) or is_queued_for_deletion():
+		return actual
 	_publish_health_change(previously_traversable)
 	return actual
 
@@ -170,7 +180,32 @@ func get_vein_snapshot() -> Dictionary:
 
 
 func is_traversable() -> bool:
-	return health > 0.0 and entry_enabled
+	return health > 0.0 and entry_enabled and _endpoint_is_functional(start_node) \
+		and _endpoint_is_functional(end_node)
+
+
+func is_attackable() -> bool:
+	return health > 0.0 and not is_queued_for_deletion()
+
+
+func is_functional() -> bool:
+	return is_attackable() and is_traversable()
+
+
+func is_repairable() -> bool:
+	return health < max_health and not is_queued_for_deletion()
+
+
+func heal(amount: float) -> float:
+	return restore_health(amount) if not is_queued_for_deletion() else 0.0
+
+
+func _endpoint_is_functional(endpoint: Variant) -> bool:
+	if Engine.is_editor_hint():
+		return true
+	# 树外、尚未设置端点的旧边健康夹具不因此改变边自身状态。
+	return not is_instance_valid(endpoint) or (not endpoint.is_queued_for_deletion() \
+		and (not endpoint.has_method("is_functional") or bool(endpoint.call("is_functional"))))
 
 
 func get_health_snapshot() -> Dictionary:
@@ -182,6 +217,8 @@ func get_health_snapshot() -> Dictionary:
 		"broken": health <= 0.0,
 		"entry_enabled": entry_enabled,
 		"traversable": is_traversable(),
+		"destroyed": health <= 0.0,
+		"functional": is_functional(),
 	}
 
 

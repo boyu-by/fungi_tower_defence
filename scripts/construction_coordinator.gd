@@ -353,6 +353,8 @@ func cancel_request(construction_id: String) -> bool:
 
 
 func pump() -> void:
+	if is_inside_tree() and not can_process():
+		return
 	if multi_worker_enabled:
 		_pump_workers()
 		return
@@ -478,7 +480,7 @@ func _preview_request(kind: StringName, parameters: Dictionary, payer: Variant) 
 	if not target is Vector2 or not target.is_finite() or not start.global_position.is_finite():
 		return _reject_preview(result, &"invalid_target")
 	if kind == &"remote_cultivation":
-		var remote_preview: Dictionary = remote_cultivation_system.preview_request(start, target)
+		var remote_preview: Dictionary = remote_cultivation_system.preview_request(start, target, parameters.get("organ_kind", &"attack"))
 		result.merge(remote_preview, true)
 		result["reason"] = &""
 		if not bool(result["valid"]):
@@ -488,18 +490,18 @@ func _preview_request(kind: StringName, parameters: Dictionary, payer: Variant) 
 			elif result["error"] == "起点未连接母核。":
 				# 即使断网也先保存合法几何，供等待行显示费用。
 				reason = &"disconnected"
-				var plan: Dictionary = growth_system.planner.plan(start.global_position, target, false)
+				var plan: Dictionary = growth_system.preview_target(start, target)
 				result["plan"] = plan
 				if not bool(plan.get("valid", false)) or float(plan.get("distance", 0.0)) <= 0.0:
 					reason = &"invalid_target"
 				else:
 					result["network_cost"] = int(plan.get("total_cost", 0))
-					result["total_cost"] = int(result["network_cost"]) + CultivationSystem.TOTAL_COST
+					result["total_cost"] = int(result["network_cost"]) + int(CultivationSystem.get_recipe(parameters.get("organ_kind", &"attack")).get("total_cost", 0))
 					result["remaining_cost"] = result["total_cost"]
 			result["reason"] = reason
 			return result
 	else:
-		var plan: Dictionary = growth_system.planner.plan(start.global_position, target, false)
+		var plan: Dictionary = growth_system.preview_target(start, target)
 		result["plan"] = plan
 		result["total_cost"] = int(plan.get("total_cost", 0))
 		if not bool(plan.get("valid", false)) or float(plan.get("distance", 0.0)) <= 0.0:
@@ -563,7 +565,7 @@ func _empty_preview(kind: StringName, parameters: Dictionary) -> Dictionary:
 		result.merge({"start_node": parameters.get("start_node"), \
 			"target_position": parameters.get("target_position", Vector2.ZERO)})
 		if kind == &"remote_cultivation":
-			result.merge({"network_cost": 0, "organ_cost": CultivationSystem.TOTAL_COST, "remaining_cost": 0})
+			result.merge({"network_cost": 0, "organ_kind": parameters.get("organ_kind", &"attack"), "organ_cost": int(CultivationSystem.get_recipe(parameters.get("organ_kind", &"attack")).get("total_cost", 0)), "remaining_cost": 0})
 	return result
 
 
@@ -661,10 +663,10 @@ func _start_execution(source: ConstructionQueue, request: Dictionary, generation
 			match context.kind:
 				&"growth":
 					internal_id = context.growth.create_target(context.parameters["start_node"], \
-						context.parameters["target_position"])
+						context.parameters["target_position"], int(context.parameters.get("plan_version", 1)))
 				&"remote_cultivation":
 					internal_id = context.remote.request_remote(context.parameters["start_node"], \
-						context.parameters["target_position"])
+						context.parameters["target_position"], context.parameters.get("organ_kind", &"attack"), int(context.parameters.get("plan_version", 1)))
 				&"connection":
 					internal_id = context.connection.request_connection(context.parameters["first_node"], \
 						context.parameters["second_node"])
@@ -838,7 +840,7 @@ func _can_complete(context: ExecutionContext, snapshot: Dictionary) -> bool:
 		if context.kind == &"connection":
 			return endpoint == snapshot.get("target_node") and context.network.has_direct_connection( \
 				context.parameters["first_node"], context.parameters["second_node"])
-		return endpoint.global_position.distance_to(context.parameters["target_position"]) <= 1.0
+		return endpoint.global_position.distance_to(snapshot.get("resolved_target_position", context.parameters["target_position"])) <= 1.0
 	if context.remote.has_active_request() or context.growth.has_active_task() or context.cultivation.has_active_task():
 		return false
 	var growth: Dictionary = context.growth.get_task_snapshot()
@@ -849,11 +851,11 @@ func _can_complete(context: ExecutionContext, snapshot: Dictionary) -> bool:
 		and int(cultivation.get("task_id", 0)) > 0 \
 		and int(cultivation.get("task_id", 0)) == int(context.internal_ids["cultivation_task_id"]) \
 		and cultivation.get("state") == &"completed" and cultivation.get("host") == endpoint \
-		and int(cultivation.get("startup_transferred", 0)) == CultivationSystem.STARTUP_COST \
-		and int(cultivation.get("structure_consumed", 0)) == CultivationSystem.STRUCTURE_COST \
+		and int(cultivation.get("startup_transferred", 0)) == int(cultivation.get("startup_cost", CultivationSystem.STARTUP_COST)) \
+		and int(cultivation.get("structure_consumed", 0)) == int(cultivation.get("structure_cost", CultivationSystem.STRUCTURE_COST)) \
 		and float(cultivation.get("effective_time", 0.0)) >= CultivationSystem.MINIMUM_EFFECTIVE_TIME \
 		and _node_is_available(endpoint) and context.network.is_node_registered(endpoint) \
-		and endpoint.get_organ_occupant() is AttackOrgan
+		and _organ_matches_kind(endpoint.get_organ_occupant(), cultivation.get("organ_kind", &"attack"))
 
 
 func _active_endpoint_reason(context: ExecutionContext, snapshot: Dictionary) -> StringName:
@@ -880,12 +882,12 @@ func _active_endpoint_reason(context: ExecutionContext, snapshot: Dictionary) ->
 					and int(cultivation.get("task_id", 0)) == int(context.internal_ids["cultivation_task_id"]) \
 					and cultivation.get("host") == endpoint and cultivation.get("state") == &"completed" \
 					and not context.cultivation.has_active_task() \
-					and int(cultivation.get("structure_consumed", 0)) == CultivationSystem.STRUCTURE_COST \
-					and int(cultivation.get("startup_transferred", 0)) == CultivationSystem.STARTUP_COST \
+					and int(cultivation.get("structure_consumed", 0)) == int(cultivation.get("structure_cost", CultivationSystem.STRUCTURE_COST)) \
+					and int(cultivation.get("startup_transferred", 0)) == int(cultivation.get("startup_cost", CultivationSystem.STARTUP_COST)) \
 					and float(cultivation.get("effective_time", 0.0)) >= CultivationSystem.MINIMUM_EFFECTIVE_TIME \
 					and int(cultivation.get("buffered_nutrition", 0)) == 0 \
 					and int(cultivation.get("startup_reserved", 0)) == 0 \
-					and _node_is_available(organ) and organ is AttackOrgan and organ.get_parent() == endpoint \
+					and _node_is_available(organ) and _organ_matches_kind(organ, cultivation.get("organ_kind", &"attack")) and organ.get_parent() == endpoint \
 					and context.growth.get_completed_endpoint(int(context.internal_ids["growth_task_id"])) == endpoint:
 				var occupants: int = 0
 				for child: Node in endpoint.get_children():
@@ -1208,26 +1210,26 @@ func get_resource_snapshot() -> Dictionary:
 		for key: String in resources:
 			result[key] += int(resources[key])
 	if not multi_worker_enabled and _workers.is_empty():
-		var growth: Dictionary = growth_system.get_task_snapshot() if _node_is_available(growth_system) else {}
+		var growth: Dictionary = growth_system.get_resource_snapshot() if _node_is_available(growth_system) else {}
 		var cultivation: Dictionary = cultivation_system.get_resource_snapshot() if _node_is_available(cultivation_system) else {}
-		var task: Dictionary = cultivation_system.get_task_snapshot() if _node_is_available(cultivation_system) else {}
 		result["network_structure"] += int(growth.get("consumed_nutrition", 0))
 		result["organ_structure"] += int(cultivation.get("structure_consumed", 0))
 		result["growth_buffer"] = int(growth.get("buffered_nutrition", 0))
 		result["cultivation_buffer"] = int(cultivation.get("buffered_nutrition", 0))
 		result["startup_reserved"] = int(cultivation.get("startup_reserved", 0))
-		result["startup_transferred"] += int(task.get("startup_transferred", 0))
+		result["startup_transferred"] += cultivation_system.get_startup_transferred_nutrition() \
+			if _node_is_available(cultivation_system) else 0
 		result["growth_transit"] = _paid_supply_transit(growth_supply_system)
 		result["cultivation_transit"] = _paid_supply_transit(cultivation_supply_system)
 	return result
 
 
-func enqueue_local_cultivation(host: HyphaNode) -> Dictionary:
+func enqueue_local_cultivation(host: HyphaNode, organ_kind: StringName = &"") -> Dictionary:
 	_set_queue_mode()
 	if not multi_worker_enabled or _resetting or _exiting or not _node_is_available(queue):
 		return _enqueue_result(false, "", &"invalid_configuration")
 	_accepting += 1
-	var selection: Dictionary = get_cultivation_selection(host)
+	var selection: Dictionary = get_cultivation_selection(host, organ_kind)
 	var existing_id: String = String(selection["construction_id"])
 	var result: Dictionary
 	if not existing_id.is_empty():
@@ -1239,25 +1241,31 @@ func enqueue_local_cultivation(host: HyphaNode) -> Dictionary:
 		var source: ConstructionQueue = queue
 		var generation: int = source.get_generation()
 		var retained: ConstructionWorker = _retained_bud_worker(host)
-		result = source._coordinator_enqueue_cultivation(host, mother_core)
+		result = source._coordinator_enqueue_cultivation(host, mother_core, selection.get("organ_kind", &"attack"))
 		if bool(result["accepted"]) and source == queue and source.get_generation() == generation:
 			var construction_id: String = String(result["construction_id"])
 			if bool(selection["can_continue"]) and retained != null:
 				_local_continuations[construction_id] = retained
-			_admissions[construction_id] = {"host": host, "total_cost": CultivationSystem.TOTAL_COST, \
+			_admissions[construction_id] = {"host": host, "organ_kind": selection.get("organ_kind", &"attack"), "total_cost": int(selection["total_cost"]), \
 				"remaining_cost": int(selection["remaining_cost"])}
 	_schedule_pump()
 	_accepting -= 1
 	return result
 
 
-func get_cultivation_selection(host: HyphaNode) -> Dictionary:
+func get_cultivation_selection(host: HyphaNode, organ_kind: StringName = &"") -> Dictionary:
+	var kind: StringName = organ_kind
+	if kind == &"":
+		kind = &"digestive" if _node_is_available(host) and bool(host.get_meta("rebuild_digestive", false)) else &"attack"
+	var recipe: Dictionary = CultivationSystem.get_recipe(kind)
 	var result: Dictionary = {
 		"host": host if _node_is_available(host) else null, "reason": &"no_selection", "message": "请选择成熟菌结。",
 		"can_cultivate": false, "can_continue": false, "can_pause": false, "can_resume": false, "can_cancel": false,
-		"task": {}, "total_cost": CultivationSystem.TOTAL_COST, "remaining_cost": CultivationSystem.TOTAL_COST,
+		"task": {}, "organ_kind": kind, "total_cost": int(recipe.get("total_cost", 0)), "remaining_cost": int(recipe.get("total_cost", 0)),
 		"available_nutrition": 0, "construction_id": "",
 	}
+	if recipe.is_empty():
+		return _cultivation_selection_reason(result, &"invalid_configuration", "器官类型无效。")
 	if not _node_is_available(host):
 		return result
 	if _node_is_available(cultivation_supply_system):
@@ -1270,6 +1278,8 @@ func get_cultivation_selection(host: HyphaNode) -> Dictionary:
 			if worker != null else {}
 		result["construction_id"] = construction_id
 		result["task"] = task
+		result["organ_kind"] = task.get("organ_kind", kind)
+		result["total_cost"] = int(task.get("total_cost", recipe["total_cost"]))
 		result["remaining_cost"] = int(task.get("remaining_cost", CultivationSystem.TOTAL_COST))
 		result["can_cancel"] = true
 		result["can_pause"] = active["state"] != &"paused"
@@ -1285,6 +1295,8 @@ func get_cultivation_selection(host: HyphaNode) -> Dictionary:
 	if retained != null:
 		var task: Dictionary = retained.cultivation_system.get_task_snapshot()
 		result["task"] = task
+		result["organ_kind"] = task.get("organ_kind", kind)
+		result["total_cost"] = int(task.get("total_cost", recipe["total_cost"]))
 		result["remaining_cost"] = int(task.get("remaining_cost", CultivationSystem.TOTAL_COST))
 		if not retained.is_settled():
 			return _cultivation_selection_reason(result, &"settlement_pending", "上一培育尝试正在结算。")
@@ -1298,7 +1310,7 @@ func get_cultivation_selection(host: HyphaNode) -> Dictionary:
 	if not network_system.is_available_connected_to_core(host):
 		return _cultivation_selection_reason(result, &"disconnected", "该菌结暂时未连接母核。")
 	result["can_cultivate"] = true
-	return _cultivation_selection_reason(result, &"ready", "可在此培育攻击器官。")
+	return _cultivation_selection_reason(result, &"ready", "培育胃囊：8营养全计结构、至少3秒，空输入与空产物。" if kind == &"digestive" else "培育攻击器官：12营养＝8结构＋4启动库存。")
 
 
 func _set_queue_mode() -> void:
@@ -1434,7 +1446,9 @@ func _preview_worker_pending(request: Dictionary) -> Dictionary:
 func _preview_local_pending(request: Dictionary) -> Dictionary:
 	var host: HyphaNode = request["parameters"].get("host") as HyphaNode
 	var planned: Dictionary = {"valid": false, "reason": &"", "error": "", "host": host, \
-		"total_cost": CultivationSystem.TOTAL_COST, "remaining_cost": CultivationSystem.TOTAL_COST}
+		"organ_kind": request["parameters"].get("organ_kind", &"attack"),
+		"total_cost": int(CultivationSystem.get_recipe(request["parameters"].get("organ_kind", &"attack"))["total_cost"]),
+		"remaining_cost": int(CultivationSystem.get_recipe(request["parameters"].get("organ_kind", &"attack"))["total_cost"])}
 	var payer_reason: StringName = _payer_reason(&"cultivation", request["payer"])
 	if payer_reason != &"":
 		return _reject_preview(planned, payer_reason)
@@ -1578,6 +1592,8 @@ func _create_worker() -> ConstructionWorker:
 	worker.cultivation_system.attack_organ_scene = cultivation_system.attack_organ_scene
 	worker.cultivation_system.weapon_scene = cultivation_system.weapon_scene
 	worker.cultivation_system.weapon_attack_range = cultivation_system.weapon_attack_range
+	worker.cultivation_system.normal_weapon_profile = cultivation_system.normal_weapon_profile.copy_for_instance() \
+		if cultivation_system.normal_weapon_profile != null else null
 	worker.cultivation_supply_system.packet_scene = cultivation_supply_system.packet_scene
 	worker.cultivation_supply_system.dispatch_interval = cultivation_supply_system.dispatch_interval
 	worker.cultivation_supply_system.traffic_required = cultivation_supply_system.traffic_required
@@ -1925,3 +1941,71 @@ func _paid_supply_transit(supply: Variant) -> int:
 				and not bool(shipment.get("refunded", false)):
 			count += 1
 	return count
+
+
+func _organ_matches_kind(organ: Variant, kind: StringName) -> bool:
+	return organ is DigestiveOrgan if kind == &"digestive" else organ is AttackOrgan
+
+
+func preview_retarget(construction_id: String, position: Vector2) -> Dictionary:
+	var request: Dictionary = get_request(construction_id)
+	if _resetting or _exiting or request.is_empty() or request["kind"] not in [&"growth", &"remote_cultivation"] \
+			or request["state"] in ConstructionQueue.TERMINAL_STATES or not position.is_finite():
+		return {"valid": false, "error": "请先选择尚未完成的 G 或 B 目标。"}
+	var proposed: Dictionary = request["parameters"].duplicate(true)
+	proposed["target_position"] = position
+	if not queue._find_duplicate(request["kind"], proposed, construction_id).is_empty():
+		return {"valid": false, "error": "另一建设目标已占用此落点。", "reason": &"duplicate"}
+	var worker: ConstructionWorker = get_worker(construction_id)
+	if worker != null and bool(request.get("started", false)):
+		return worker.preview_retarget(position)
+	if bool(request.get("started", false)):
+		return remote_cultivation_system.preview_retarget(position) if request["kind"] == &"remote_cultivation" else growth_system.preview_retarget(position)
+	var parameters: Dictionary = request["parameters"].duplicate(true)
+	parameters["target_position"] = position
+	var preview: Dictionary = _preview_request(request["kind"], parameters, request["payer"])
+	var previous: Dictionary = request.get("detail", {})
+	var old_cost: int = int(previous.get("total_cost", 0))
+	var new_cost: int = int(preview.get("total_cost", 0))
+	preview.merge({"effective_point": parameters["start_node"].global_position,
+		"deferred": false, "old_remaining_cost": old_cost, "new_remaining_cost": new_cost,
+		"cost_delta": new_cost - old_cost, "plan_version": int(parameters.get("plan_version", 1)) + 1}, true)
+	# 断网等待仍允许替换合法几何；任务恢复连接后才付款。
+	if preview.get("reason") == &"disconnected" and bool(preview.get("plan", {}).get("valid", false)):
+		preview["valid"] = true
+	return preview
+
+
+func retarget(construction_id: String, position: Vector2) -> bool:
+	var planned: Dictionary = preview_retarget(construction_id, position)
+	if not bool(planned.get("valid", false)) or _accepting > 0 or _syncing:
+		return false
+	var request: Dictionary = get_request(construction_id)
+	var generation: int = queue.get_generation()
+	var worker: ConstructionWorker = get_worker(construction_id)
+	_accepting += 1
+	var accepted: bool = true
+	if bool(request.get("started", false)):
+		if worker != null:
+			accepted = worker.retarget_target(position)
+		else:
+			var old_position: Vector2 = _execution.parameters["target_position"]
+			_execution.parameters["target_position"] = position
+			_syncing = true
+			accepted = remote_cultivation_system.retarget_target(position) if request["kind"] == &"remote_cultivation" else growth_system.retarget_target(position)
+			_syncing = false
+			if not accepted:
+				_execution.parameters["target_position"] = old_position
+	if accepted and not _resetting and not _exiting and queue.get_generation() == generation:
+		var context: WorkerContext = _worker_contexts.get(construction_id)
+		if context != null:
+			context.parameters["target_position"] = position
+		_admissions[construction_id] = planned.duplicate(true)
+		accepted = queue._coordinator_retarget(construction_id, generation, position, planned)
+	_accepting -= 1
+	if multi_worker_enabled:
+		_sync_workers()
+	else:
+		_sync_execution()
+	_schedule_pump()
+	return accepted

@@ -1,14 +1,15 @@
 class_name RepairInputController
 extends Node2D
-## 关卡显式转交维修输入；只选边、发布报价和操作任务，不扣款或恢复生命。
+## 关卡显式转交维修输入；选择网络组织、发布报价和操作任务，不扣款或恢复生命。
 
 signal mode_changed(active: bool)
-signal selection_changed(edge: HyphaEdge)
+signal selection_changed(target: Node2D)
 signal preview_changed(snapshot: Dictionary)
 signal status_changed(snapshot: Dictionary)
 signal notice(message: String)
 
 const EDGE_PICK_RADIUS: float = 16.0
+const TISSUE_PICK_RADIUS: float = 24.0
 const DISTANCE_EPSILON: float = 0.00001
 const SELECTED_COLOR: Color = Color(1.0, 0.85, 0.38, 0.85)
 const HEALTHY_COLOR: Color = Color(0.55, 0.95, 0.72, 0.8)
@@ -35,12 +36,12 @@ const WORK_POINT_COLOR: Color = Color(0.5, 0.9, 1.0, 0.95)
 @export var placement_bounds: Rect2 = Rect2(0, 230, 1200, 410)
 
 var _selecting: bool = false
-var _selected_edge: HyphaEdge = null
+var _selected_target: Node2D = null
 var _last_preview: Dictionary = {}
 var _bound_repair_system: RepairSystem = null
 var _bound_supply_system: RepairSupplySystem = null
 var _bound_network_system: NetworkSystem = null
-var _bound_edge: HyphaEdge = null
+var _bound_target: Node2D = null
 var _publishing_status: bool = false
 
 
@@ -54,36 +55,39 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
-	_disconnect_selected_edge()
+	_disconnect_selected_target()
 	_disconnect_repair_system()
 	_disconnect_supply_system()
 	_disconnect_network_system()
-	_selected_edge = null
+	_selected_target = null
 	_selecting = false
 
 
 func _process(_delta: float) -> void:
-	if _selected_edge != null and not _is_selectable_edge(_selected_edge):
+	if _selected_target != null and not _is_selectable_target(_selected_target):
 		_clear_selection()
 	queue_redraw()
 
 
 func _draw() -> void:
-	var edge: HyphaEdge = get_selected_edge()
-	if edge == null or not global_transform.is_finite() \
+	var target: Node2D = get_selected_target()
+	if target == null or not global_transform.is_finite() \
 			or is_zero_approx(global_transform.determinant()):
 		return
-	# 标记使用世界坐标，控制器可放在任意带变换的 Systems 下。
 	draw_set_transform_matrix(global_transform.affine_inverse())
-	var first: Vector2 = edge.start_node.global_position
-	var second: Vector2 = edge.end_node.global_position
-	var health: Dictionary = edge.get_health_snapshot()
+	var health: Dictionary = target.call("get_health_snapshot")
 	var color: Color = SELECTED_COLOR if bool(health.get("damaged", false)) else HEALTHY_COLOR
-	# 选择高亮也跟随真实线宽，避免固定粗线遮住主脉逐级成长的形态。
-	var highlighted_width: float = float(edge.get_vein_snapshot().get("width", 6.0)) + 3.0
-	draw_line(first, second, color, highlighted_width, true)
-	draw_circle(first, 8.0, color, false, 2.0, true)
-	draw_circle(second, 8.0, color, false, 2.0, true)
+	var center: Vector2 = _tissue_pick_point(target)
+	if target is HyphaEdge:
+		var first: Vector2 = target.start_node.global_position
+		var second: Vector2 = target.end_node.global_position
+		var highlighted_width: float = float(target.get_vein_snapshot().get("width", 6.0)) + 3.0
+		draw_line(first, second, color, highlighted_width, true)
+		draw_circle(first, 8.0, color, false, 2.0, true)
+		draw_circle(second, 8.0, color, false, 2.0, true)
+		center = first.lerp(second, 0.5)
+	else:
+		draw_circle(center, TISSUE_PICK_RADIUS + 4.0, color, false, 2.0, true)
 	var preview: Dictionary = get_preview()
 	var point: Node2D = preview.get("repair_point") as Node2D
 	if _is_live_node(point):
@@ -92,7 +96,7 @@ func _draw() -> void:
 		float(health.get("health", 0.0)), float(health.get("max_health", 0.0)),
 		int(preview.get("estimated_cost", 0)),
 	]
-	draw_string(ThemeDB.fallback_font, first.lerp(second, 0.5) + Vector2(10, -12),
+	draw_string(ThemeDB.fallback_font, center + Vector2(10, -12),
 		caption, HORIZONTAL_ALIGNMENT_LEFT, -1.0, 16, color)
 
 
@@ -107,7 +111,7 @@ func _on_supply_changed(_snapshot: Dictionary) -> void:
 
 
 func _on_network_changed() -> void:
-	if _selected_edge != null and not _is_selectable_edge(_selected_edge):
+	if _selected_target != null and not _is_selectable_target(_selected_target):
 		_clear_selection()
 	else:
 		_publish_preview()
@@ -134,7 +138,7 @@ func enter_selection_mode() -> bool:
 		set_process(true)
 		mode_changed.emit(true)
 	_publish_preview()
-	notice.emit("左键选择菌丝；J 开始维修，K 暂停 / 继续，Backspace 取消维修；Esc / 右键退出选择")
+	notice.emit("左键选择组织或菌丝；J 开始维修，K 暂停 / 继续，Backspace 取消维修；Esc / 右键退出选择")
 	return true
 
 
@@ -142,7 +146,7 @@ func exit_selection_mode() -> void:
 	if not _selecting:
 		return
 	_selecting = false
-	set_process(get_selected_edge() != null)
+	set_process(get_selected_target() != null)
 	mode_changed.emit(false)
 	_publish_preview()
 
@@ -152,19 +156,23 @@ func is_selecting() -> bool:
 
 
 func select_edge(edge: HyphaEdge) -> bool:
+	return select_target(edge)
+
+
+func select_target(target: Node2D) -> bool:
 	if not _selecting:
 		notice.emit("按 F 进入维修选择")
 		return false
-	if not _is_selectable_edge(edge):
-		_publish_failure(&"invalid_edge", "请选择当前网络中的有效菌丝")
+	if not _is_selectable_target(target):
+		_publish_failure(&"invalid_target", "请选择当前网络中可修复的组织")
 		return false
-	if _selected_edge != edge:
-		_disconnect_selected_edge()
-		_selected_edge = edge
-		_bound_edge = edge
-		edge.health_changed.connect(_on_selected_health_changed)
-		edge.tree_exiting.connect(_on_selected_tree_exiting)
-		selection_changed.emit(edge)
+	if _selected_target != target:
+		_disconnect_selected_target()
+		_selected_target = target
+		_bound_target = target
+		target.connect("health_changed", _on_selected_health_changed)
+		target.tree_exiting.connect(_on_selected_tree_exiting)
+		selection_changed.emit(target)
 	_publish_preview()
 	notice.emit(String(_last_preview.get("message", "")))
 	return true
@@ -178,17 +186,30 @@ func select_at(world_position: Vector2) -> bool:
 		_publish_failure(&"invalid_coordinates", "选择坐标必须有限")
 		return false
 	if not placement_bounds.has_point(world_position):
-		_publish_failure(&"outside_bounds", "请在可生长区域内选择菌丝")
+		_publish_failure(&"outside_bounds", "请在可生长区域内选择组织")
 		return false
+	var target: Node2D = _tissue_at(world_position)
 	var edge: HyphaEdge = _edge_at(world_position)
-	if edge == null:
-		_publish_failure(&"edge_required", "请点击菌丝线段附近")
+	if edge != null:
+		var edge_point: Vector2 = Geometry2D.get_closest_point_to_segment(
+			world_position, edge.start_node.global_position, edge.end_node.global_position)
+		# 拐角附近短菌丝不能被两端的组织拾取圆完全遮住。点击中心保留节点优先，
+		# 点击连线则按实际距离选择菌丝，原 F/J 操作不增加另一种模式。
+		if target == null or world_position.distance_squared_to(edge_point) + DISTANCE_EPSILON \
+				< world_position.distance_squared_to(_tissue_pick_point(target)):
+			target = edge
+	if target == null:
+		_publish_failure(&"target_required", "请点击菌结、器官或菌丝附近")
 		return false
-	return select_edge(edge)
+	return select_target(target)
 
 
 func get_selected_edge() -> HyphaEdge:
-	return _selected_edge if _is_selectable_edge(_selected_edge) else null
+	return get_selected_target() as HyphaEdge
+
+
+func get_selected_target() -> Node2D:
+	return _selected_target if _is_selectable_target(_selected_target) else null
 
 
 func get_preview() -> Dictionary:
@@ -196,21 +217,24 @@ func get_preview() -> Dictionary:
 
 
 func request_repair() -> int:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return 0
 	_connect_services()
 	var error: String = _configuration_error()
 	if not error.is_empty():
 		_publish_failure(&"invalid_configuration", error)
 		return 0
-	var edge: HyphaEdge = get_selected_edge()
-	if edge == null:
-		_publish_failure(&"edge_required", "请先按 F 并选择受损菌丝")
+	var target: Node2D = get_selected_target()
+	if target == null:
+		_publish_failure(&"target_required", "请先按 F 并选择受损组织")
 		return 0
-	var preview: Dictionary = repair_system.preview_repair(edge)
+	var preview: Dictionary = repair_system.preview_repair(target)
 	if not bool(preview.get("valid", false)):
 		_publish_preview()
 		notice.emit(_describe_preview(preview))
 		return 0
-	var task_id: int = repair_system.request_repair(edge)
+	var task_id: int = repair_system.request_repair(target)
 	_publish_preview()
 	_publish_status()
 	if task_id > 0:
@@ -221,11 +245,14 @@ func request_repair() -> int:
 			_describe_access(task),
 		])
 	else:
-		notice.emit("维修请求未接受；请重新确认所选菌丝与当前维修任务")
+		notice.emit("维修请求未接受；请重新确认所选组织与当前维修任务")
 	return task_id
 
 
 func toggle_pause() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if not _is_live_node(repair_system) or not repair_system.has_active_task():
 		notice.emit("当前没有可暂停或继续的维修任务")
 		return false
@@ -239,6 +266,9 @@ func toggle_pause() -> bool:
 
 
 func cancel_repair() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if not _is_live_node(repair_system) or not repair_system.has_active_task():
 		notice.emit("当前没有可取消的维修任务")
 		return false
@@ -333,19 +363,19 @@ func _disconnect_network_system() -> void:
 	_bound_network_system = null
 
 
-func _disconnect_selected_edge() -> void:
-	if is_instance_valid(_bound_edge):
-		if _bound_edge.health_changed.is_connected(_on_selected_health_changed):
-			_bound_edge.health_changed.disconnect(_on_selected_health_changed)
-		if _bound_edge.tree_exiting.is_connected(_on_selected_tree_exiting):
-			_bound_edge.tree_exiting.disconnect(_on_selected_tree_exiting)
-	_bound_edge = null
+func _disconnect_selected_target() -> void:
+	if is_instance_valid(_bound_target):
+		if _bound_target.is_connected("health_changed", _on_selected_health_changed):
+			_bound_target.disconnect("health_changed", _on_selected_health_changed)
+		if _bound_target.tree_exiting.is_connected(_on_selected_tree_exiting):
+			_bound_target.tree_exiting.disconnect(_on_selected_tree_exiting)
+	_bound_target = null
 
 
 func _clear_selection() -> void:
-	var had_selection: bool = _selected_edge != null
-	_disconnect_selected_edge()
-	_selected_edge = null
+	var had_selection: bool = _selected_target != null
+	_disconnect_selected_target()
+	_selected_target = null
 	set_process(_selecting)
 	if had_selection:
 		selection_changed.emit(null)
@@ -364,21 +394,21 @@ func _configuration_error() -> String:
 
 
 func _make_preview() -> Dictionary:
-	var edge: HyphaEdge = get_selected_edge()
+	var target: Node2D = get_selected_target()
 	var snapshot: Dictionary = {
-		"valid": false, "reason": &"edge_required", "edge": edge, "edge_id": 0,
+		"valid": false, "reason": &"target_required", "target": target, "target_id": 0,
+		"target_name": "", "target_kind": &"", "edge": null, "edge_id": 0,
 		"health": 0.0, "max_health": 0.0, "missing_health": 0.0,
-		"estimated_cost": 0, "repair_point": null, "supply_reachable": false,
+		"estimated_cost": 0, "repair_point": null, "access_edge": null, "supply_reachable": false,
 	}
 	var error: String = _configuration_error()
 	if not error.is_empty():
 		snapshot["reason"] = &"invalid_configuration"
-	elif edge != null:
-		snapshot = repair_system.preview_repair(edge).duplicate(true)
-	# 确认后的工作点由任务固定；预览不重新选择任务的另一端。
-	if edge != null and _is_live_node(repair_system):
+	elif target != null:
+		snapshot = repair_system.preview_repair(target).duplicate(true)
+	if target != null and _is_live_node(repair_system):
 		var task: Dictionary = repair_system.get_task_snapshot()
-		if task.get("edge") == edge and repair_system.has_active_task():
+		if task.get("target", task.get("edge")) == target and repair_system.has_active_task():
 			snapshot["repair_point"] = task.get("repair_point")
 			snapshot["supply_reachable"] = task.get("supply_reachable", false)
 			snapshot["wait_reason"] = task.get("wait_reason", &"")
@@ -416,9 +446,9 @@ func _publish_status() -> void:
 
 
 func _describe_preview(snapshot: Dictionary) -> String:
-	var edge: HyphaEdge = snapshot.get("edge") as HyphaEdge
-	if not _is_live_node(edge):
-		return "按 F 并左键选择菌丝，预览生命和维修费用"
+	var target: Node2D = snapshot.get("target", snapshot.get("edge")) as Node2D
+	if not _is_live_node(target):
+		return "按 F 并左键选择组织或菌丝，预览生命和维修费用"
 	var health: float = float(snapshot.get("health", 0.0))
 	var maximum: float = float(snapshot.get("max_health", 0.0))
 	var price: int = int(snapshot.get("estimated_cost", 0))
@@ -426,7 +456,7 @@ func _describe_preview(snapshot: Dictionary) -> String:
 		health, maximum, price, _describe_access(snapshot),
 	]
 	if float(snapshot.get("missing_health", 0.0)) <= 0.0:
-		result += "；菌丝健康，无需维修"
+		result += "；组织健康，无需维修"
 	elif _is_live_node(repair_system) and repair_system.has_active_task():
 		result += "；已有维修任务，可用 K 暂停 / 继续，Backspace 取消"
 	return result
@@ -460,6 +490,59 @@ func _edge_at(world_position: Vector2) -> HyphaEdge:
 			best = edge
 			best_distance = distance
 	return best
+
+
+func _tissue_at(world_position: Vector2) -> Node2D:
+	var best: Node2D = null
+	var best_distance: float = TISSUE_PICK_RADIUS * TISSUE_PICK_RADIUS
+	if not is_inside_tree():
+		return null
+	for candidate: Node in get_tree().get_nodes_in_group("colony_tissues"):
+		if candidate is HyphaEdge or not _is_selectable_target(candidate):
+			continue
+		var target: Node2D = candidate as Node2D
+		var distance: float = world_position.distance_squared_to(_tissue_pick_point(target))
+		if distance > TISSUE_PICK_RADIUS * TISSUE_PICK_RADIUS:
+			continue
+		if best == null or distance < best_distance - DISTANCE_EPSILON \
+				or (absf(distance - best_distance) <= DISTANCE_EPSILON \
+				and target.get_instance_id() < best.get_instance_id()):
+			best = target
+			best_distance = distance
+	return best
+
+
+func _tissue_pick_point(target: Node2D) -> Vector2:
+	if target is AttackOrgan or target is DigestiveOrgan:
+		return target.to_global(Vector2(0.0, -32.0))
+	if target is OrganBud:
+		return target.to_global(Vector2(0.0, -15.0))
+	if target is MotherCore:
+		return target.to_global(Vector2(0.0, -35.0))
+	return target.global_position
+
+
+func _is_selectable_target(candidate: Variant) -> bool:
+	if not _is_live_node(candidate) or not candidate is Node2D or not _is_live_node(network_system):
+		return false
+	if candidate is HyphaEdge:
+		return _is_selectable_edge(candidate)
+	if not candidate.has_method("get_health_snapshot") or not candidate.has_method("is_attackable"):
+		return false
+	if not candidate.global_position.is_finite():
+		return false
+	if candidate is HyphaNode:
+		return network_system.is_node_registered(candidate)
+	if candidate is MotherCore:
+		return network_system.peek_registered_core() == candidate and bool(candidate.call("is_attackable"))
+	if not bool(candidate.call("is_attackable")):
+		return false
+	if candidate is GrowthTip:
+		return network_system.is_node_registered(candidate)
+	if candidate is AttackOrgan or candidate is DigestiveOrgan or candidate is OrganBud:
+		var host: HyphaNode = candidate.get_parent() as HyphaNode
+		return _is_live_node(host) and network_system.is_node_registered(host)
+	return false
 
 
 func _is_selectable_edge(candidate: Variant) -> bool:

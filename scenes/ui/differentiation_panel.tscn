@@ -1,0 +1,149 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/differentiation_input_controller.gd" id="1_input"]
+
+[sub_resource type="Theme" id="Theme_panel"]
+default_font_size = 13
+Label/colors/font_color = Color(0.93, 0.96, 0.85, 1)
+
+[sub_resource type="StyleBoxFlat" id="Style_panel"]
+bg_color = Color(0.085, 0.14, 0.12, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.47, 0.63, 0.44, 0.9)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_left = 6
+corner_radius_bottom_right = 6
+
+[node name="DifferentiationPanel" type="PanelContainer"]
+visible = false
+custom_minimum_size = Vector2(374, 0)
+offset_right = 374.0
+offset_bottom = 294.0
+mouse_filter = 0
+theme = SubResource("Theme_panel")
+theme_override_colors/font_color = Color(0.93, 0.96, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_styles/panel = SubResource("Style_panel")
+script = ExtResource("1_input")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Heading" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Margin/Content/Heading"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.92, 0.6, 1)
+theme_override_font_sizes/font_size = 14
+text = "攻击器官分化"
+mouse_filter = 2
+
+[node name="RulesButton" type="Button" parent="Margin/Content/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "规则"
+tooltip_text = "查看成熟门槛、分化供养、取消退款与继续规则"
+
+[node name="TypeInfoLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+text = "普通：单体，每轮1营养；破甲：无视护甲，每轮2。\n散射：至多3目标，整轮1营养。"
+autowrap_mode = 3
+
+[node name="StatusLabel" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 49)
+layout_mode = 2
+mouse_filter = 2
+text = "请选择承载攻击器官的成熟菌结。"
+autowrap_mode = 3
+max_lines_visible = 3
+
+[node name="ProgressBar" type="ProgressBar" parent="Margin/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+mouse_filter = 2
+show_percentage = false
+
+[node name="Actions" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="PiercingButton" type="Button" parent="Margin/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 28)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "破甲"
+tooltip_text = "分化为破甲：无视护甲，每轮消耗2弹药营养"
+disabled = true
+
+[node name="ScatterButton" type="Button" parent="Margin/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "散射"
+tooltip_text = "分化为散射：至多3目标，整轮消耗1弹药营养"
+disabled = true
+
+[node name="PauseButton" type="Button" parent="Margin/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "暂停"
+tooltip_text = "暂停所选器官的分化；保留进度，仍停止射击与新弹药供养"
+disabled = true
+
+[node name="ContinueButton" type="Button" parent="Margin/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "继续"
+tooltip_text = "恢复暂停，或沿取消前已锁定的方向继续分化"
+disabled = true
+
+[node name="CancelButton" type="Button" parent="Margin/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "取消"
+tooltip_text = "退回未使用材料；已付进度与方向保留，普通攻击重新等待完整冷却"
+disabled = true
+
+[node name="RulesScroll" type="ScrollContainer" parent="Margin/Content"]
+custom_minimum_size = Vector2(0, 69)
+layout_mode = 2
+size_flags_vertical = 0
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 1
+
+[node name="RulesLabel" type="Label" parent="Margin/Content/RulesScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.74, 0.81, 0.72, 1)
+text = "成熟（累计回收≥160）后，普通攻击器官可分化。\n分化需8材料营养、至少5秒有效时间。\n分化与暂停均停火；取消保留方向和已付进度。\n点击「规则」查看供养、取消与继续规则。"
+autowrap_mode = 3

@@ -40,9 +40,9 @@ func _ready() -> void:
 
 func _draw() -> void:
 	var color: Color = _marker_color()
-	if (_is_preview and bool(_preview.get("valid", false))) or _is_remote_status():
-		var start_position: Vector2 = _route_plan.get("start_position", global_position)
-		draw_line(to_local(start_position), Vector2.ZERO, color, 2.0, true)
+	if (_is_preview and bool(_preview.get("valid", false))) or (not _is_preview and not _route_plan.is_empty()):
+		for segment: Dictionary in _route_plan.get("segments", []):
+			draw_line(to_local(segment["start_position"]), to_local(segment["end_position"]), color, 2.0, true)
 		var junction_positions: PackedVector2Array = _route_plan.get("junction_positions", PackedVector2Array())
 		for point: Vector2 in junction_positions:
 			draw_circle(to_local(point), 4.0, color, false, 1.0, true)
@@ -60,7 +60,7 @@ func show_preview(preview: Dictionary) -> void:
 	_preview = preview.duplicate(true)
 	_snapshot = {}
 	_route_plan = preview.get("plan", {}).duplicate(true)
-	var target_position: Vector2 = preview.get("target_position", Vector2.ZERO)
+	var target_position: Vector2 = preview.get("resolved_target_position", _route_plan.get("effective_point", preview.get("target_position", Vector2.ZERO)))
 	# 非有限坐标不能写入 CanvasItem；错误提示仍留在上次有效鼠标位置。
 	if target_position.is_finite():
 		global_position = target_position
@@ -73,11 +73,8 @@ func show_status(snapshot: Dictionary) -> void:
 	_is_preview = false
 	_snapshot = snapshot.duplicate(true)
 	_preview = {}
-	if not _is_remote_status():
-		_route_plan = {}
-	elif snapshot.has("plan"):
-		_route_plan = snapshot.get("plan", {}).duplicate(true)
-	var target_position: Vector2 = snapshot.get("target_position", global_position)
+	_route_plan = snapshot.get("plan", {}).duplicate(true)
+	var target_position: Vector2 = snapshot.get("resolved_target_position", snapshot.get("target_position", global_position))
 	if target_position.is_finite():
 		global_position = target_position
 	if is_node_ready():
@@ -105,7 +102,14 @@ func _refresh_label() -> void:
 		else:
 			var plan: Dictionary = _preview.get("plan", {})
 			var junction_positions: PackedVector2Array = plan.get("junction_positions", PackedVector2Array())
-			if _is_remote_preview():
+			if _preview.has("old_remaining_cost"):
+				status_label.text = "左键确认 · 修改目标\n剩余营养 %d → %d · 变化 %+d" % [
+					int(_preview.get("old_remaining_cost", 0)), int(_preview.get("new_remaining_cost", 0)),
+					int(_preview.get("cost_delta", 0)),
+				]
+				if bool(_preview.get("deferred", false)):
+					status_label.text += "\n当前已付费段落成后转向"
+			elif _is_remote_preview():
 				status_label.text = "左键确认 · 远程攻击芽\n菌路 %d + 器官 %d = 总计 %d\n距离 %.0f · 新菌结 %d" % [
 					int(_preview.get("network_cost", 0)), int(_preview.get("organ_cost", 12)),
 					int(_preview.get("total_cost", 0)), float(plan.get("distance", 0.0)), junction_positions.size(),
@@ -114,6 +118,10 @@ func _refresh_label() -> void:
 				status_label.text = "左键确认 · 预计营养 %d\n距离 %.0f · 新菌结 %d" % [
 					int(plan.get("total_cost", 0)), float(plan.get("distance", 0.0)), junction_positions.size(),
 				]
+			if int(plan.get("branch_count", 0)) > 0:
+				status_label.text += "\n含 %d 条短侧枝" % int(plan["branch_count"])
+			if is_instance_valid(plan.get("join_node")):
+				status_label.text += "\n将接入既有菌结"
 	else:
 		var state: StringName = StringName(_snapshot.get("state", &"idle"))
 		var wait_reason: StringName = StringName(_snapshot.get("wait_reason", &""))
@@ -143,6 +151,8 @@ func _refresh_label() -> void:
 			elif _is_remote_status() and wait_reason == &"disconnected":
 				wait_text = "菌路断开，等待恢复连接"
 			status_label.text += "\n" + wait_text
+		if bool(_snapshot.get("retarget_pending", false)):
+			status_label.text += "\n当前段落成后转向新目标"
 	_position_label()
 
 

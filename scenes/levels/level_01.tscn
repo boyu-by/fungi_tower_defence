@@ -40,6 +40,9 @@
 [ext_resource type="Script" path="res://scripts/construction_supply_scheduler.gd" id="36_construction_supply"]
 [ext_resource type="Script" path="res://scripts/cargo_passage_tracker.gd" id="37_cargo_passage"]
 [ext_resource type="Script" path="res://scripts/main_vein_system.gd" id="38_main_vein"]
+[ext_resource type="Script" path="res://scripts/combat_targeting_system.gd" id="39_combat_targeting"]
+[ext_resource type="Script" path="res://scripts/differentiation_system.gd" id="40_differentiation"]
+[ext_resource type="Script" path="res://scripts/differentiation_supply_system.gd" id="41_differentiation_supply"]
 
 [sub_resource type="SystemFont" id="Font_demo"]
 font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
@@ -76,11 +79,13 @@ display_name = "左翼菌结"
 
 [node name="AttackOrgan" parent="World/Colony/Nodes/HyphaNode" instance=ExtResource("5_organ")]
 
-[node name="SporeWeapon" parent="World/Colony/Nodes/HyphaNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container") instance=ExtResource("8_weapon")]
+[node name="SporeWeapon" parent="World/Colony/Nodes/HyphaNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container", "targeting_system") instance=ExtResource("8_weapon")]
 position = Vector2(0, -28)
 inventory_owner = NodePath("../AttackOrgan")
 enemy_container = NodePath("../../../../Enemies")
 projectile_container = NodePath("../../../../Projectiles")
+targeting_system = NodePath("../../../../../Systems/CombatTargetingSystem")
+targeting_required = true
 attack_range = 100.0
 
 [node name="RightNode" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
@@ -89,11 +94,13 @@ display_name = "右翼菌结"
 
 [node name="AttackOrgan" parent="World/Colony/Nodes/RightNode" instance=ExtResource("5_organ")]
 
-[node name="SporeWeapon" parent="World/Colony/Nodes/RightNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container") instance=ExtResource("8_weapon")]
+[node name="SporeWeapon" parent="World/Colony/Nodes/RightNode" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container", "targeting_system") instance=ExtResource("8_weapon")]
 position = Vector2(0, -28)
 inventory_owner = NodePath("../AttackOrgan")
 enemy_container = NodePath("../../../../Enemies")
 projectile_container = NodePath("../../../../Projectiles")
+targeting_system = NodePath("../../../../../Systems/CombatTargetingSystem")
+targeting_required = true
 attack_range = 100.0
 
 [node name="RearNode" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
@@ -178,6 +185,9 @@ y_sort_enabled = true
 [node name="RepairPackets" type="Node2D" parent="World"]
 y_sort_enabled = true
 
+[node name="DifferentiationPackets" type="Node2D" parent="World"]
+y_sort_enabled = true
+
 [node name="SpawnPoints" type="Node2D" parent="World"]
 
 [node name="East" type="Marker2D" parent="World/SpawnPoints"]
@@ -187,6 +197,9 @@ position = Vector2(940, 260)
 position = Vector2(260, 300)
 
 [node name="Systems" type="Node" parent="."]
+
+[node name="CombatTargetingSystem" type="Node" parent="Systems"]
+script = ExtResource("39_combat_targeting")
 
 [node name="CargoPassageTracker" type="Node" parent="Systems"]
 script = ExtResource("37_cargo_passage")
@@ -279,6 +292,23 @@ script = ExtResource("20_progress")
 [node name="ColonyCapabilities" type="Node" parent="Systems" node_paths=PackedStringArray("colony_progress")]
 script = ExtResource("32_capabilities")
 colony_progress = NodePath("../ColonyProgress")
+
+[node name="DifferentiationSystem" type="Node" parent="Systems" node_paths=PackedStringArray("colony_capabilities", "network_system")]
+script = ExtResource("40_differentiation")
+colony_capabilities = NodePath("../ColonyCapabilities")
+network_system = NodePath("../NetworkSystem")
+
+[node name="DifferentiationSupplySystem" type="Node" parent="Systems" node_paths=PackedStringArray("differentiation_system", "mother_core", "network_system", "traffic_system", "combat_supply_system", "cargo_passage_tracker", "packet_container")]
+script = ExtResource("41_differentiation_supply")
+differentiation_system = NodePath("../DifferentiationSystem")
+mother_core = NodePath("../../World/Colony/MotherCore")
+network_system = NodePath("../NetworkSystem")
+traffic_system = NodePath("../NetworkTrafficSystem")
+traffic_required = true
+combat_supply_system = NodePath("../SupplySystem")
+cargo_passage_tracker = NodePath("../CargoPassageTracker")
+packet_container = NodePath("../../World/DifferentiationPackets")
+auto_supply = false
 
 [node name="ConstructionQueue" type="Node" parent="Systems" node_paths=PackedStringArray("capabilities")]
 script = ExtResource("33_queue")

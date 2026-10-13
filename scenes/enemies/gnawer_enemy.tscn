@@ -1,0 +1,33 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="1_base"]
+
+[node name="GnawerEnemy" instance=ExtResource("1_base")]
+archetype = 3
+max_health = 36
+armor = 0
+move_speed = 38.0
+attack_damage = 10
+remains_nutrition = 4
+
+[node name="Shadow" parent="Visuals" index="0"]
+polygon = PackedVector2Array(-19, 0, -13, -5, 13, -5, 19, 0, 13, 5, -13, 5)
+
+[node name="Sprite" parent="Visuals" index="1"]
+modulate = Color(0.94, 0.74, 0.48, 1)
+
+[node name="Jaw" type="Polygon2D" parent="Visuals"]
+position = Vector2(0, -11)
+color = Color(0.82, 0.66, 0.43, 1)
+polygon = PackedVector2Array(-12, -5, -8, 6, 8, 6, 12, -5, 6, -1, -6, -1)
+
+[node name="LeftTooth" type="Polygon2D" parent="Visuals/Jaw"]
+color = Color(0.96, 0.93, 0.77, 1)
+polygon = PackedVector2Array(-8, -3, -3, -3, -5, 5)
+
+[node name="RightTooth" type="Polygon2D" parent="Visuals/Jaw"]
+color = Color(0.96, 0.93, 0.77, 1)
+polygon = PackedVector2Array(3, -3, 8, -3, 5, 5)
+
+[node name="AttackTimer" parent="." index="2"]
+wait_time = 1.0

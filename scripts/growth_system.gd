@@ -1,6 +1,6 @@
 class_name GrowthSystem
 extends Node
-## 只推进一个无障碍直线主枝；仅消耗已抵达尖端的营养，不读写母核余额。
+## 沿统一计划推进主枝与有限侧枝；仅消耗已抵达尖端的营养，不读写母核余额。
 
 signal task_changed(snapshot: Dictionary)
 signal task_completed(task_id: int)
@@ -39,6 +39,11 @@ var _connection_core: MotherCore = null
 var _connection_network: NetworkSystem = null
 var _connection_edges: Array[HyphaEdge] = []
 var _target_position: Vector2 = Vector2.ZERO
+var _resolved_target_position: Vector2 = Vector2.ZERO
+var _plan_version: int = 0
+var _plan: Dictionary = {}
+var _pending_retarget: Dictionary = {}
+var _retargeting: bool = false
 var _tip_position: Vector2 = Vector2.ZERO
 var _total_distance: float = 0.0
 var _distance: float = 0.0
@@ -53,6 +58,7 @@ var _extension_paid: bool = false
 var _shipments: Dictionary[int, bool] = {}
 var _completed_endpoints: Dictionary[int, HyphaNode] = {}
 var _anchor: Node2D = null
+var _branch_anchor: HyphaNode = null
 var _tip: GrowthTip = null
 var _edge: HyphaEdge = null
 var _changing_topology: bool = false
@@ -65,8 +71,127 @@ func _physics_process(delta: float) -> void:
 	advance(delta)
 
 
-func create_target(start_node: Node2D, target_position: Vector2) -> int:
-	return _create_task(start_node, target_position, &"growth")
+func create_target(start_node: Node2D, target_position: Vector2, initial_plan_version: int = 1) -> int:
+	return _create_task(start_node, target_position, &"growth", null, null, initial_plan_version)
+
+
+## 返回实际建设使用的计划；预览可以在另一任务运行期间读取，供建设队列使用。
+func preview_target(start_node: Node2D, target_position: Vector2) -> Dictionary:
+	if not _configuration_is_valid() or not _node_is_available(start_node) \
+			or not (start_node is MotherCore or start_node is HyphaNode) \
+			or not network_system.is_node_registered(start_node):
+		return _invalid_target_plan(target_position, "生长起点或网络不可用。")
+	var planned: Dictionary = planner.plan_growth(
+		start_node.global_position, target_position, network_system, start_node)
+	if bool(planned.get("valid", false)) and float(planned.get("distance", 0.0)) <= 0.0:
+		planned["valid"] = false
+		planned["error"] = "目标必须与生长起点保持距离。"
+	return planned
+
+
+## 已付费段从其终点换路，尚未付费段从当前菌结换路；本方法不修改任务。
+func preview_retarget(target_position: Vector2) -> Dictionary:
+	var preview: Dictionary = {
+		"valid": false, "error": "", "plan": {}, "effective_point": _tip_position,
+		"resolved_target_position": target_position,
+		"target_position": target_position, "deferred": false,
+		"old_remaining_cost": maxi(0, _total_cost - _consumed_nutrition),
+		"new_remaining_cost": 0, "cost_delta": 0, "plan_version": _plan_version,
+	}
+	if not has_active_task() or _task_kind != &"growth" or _changing_topology or _retargeting \
+			or _plan_version == MAX_TASK_ID or not _configuration_is_valid() \
+			or not _geometry_is_valid() or _segment_index >= _segments.size():
+		preview["error"] = "当前生长任务无法改目标。"
+		return preview
+	var checked_task_id: int = _task_id
+	var checked_version: int = _plan_version
+	var checked_segment: int = _segment_index
+	var checked_anchor: Node2D = _anchor
+	var paid: bool = _extension_paid
+	var segment_distance: float = _segment_distance
+	var current_segment: Dictionary = _segments[_segment_index]
+	var start_position: Vector2 = current_segment["end_position"] if paid else _anchor.global_position
+	var start_node: Node2D = _anchor if not paid else null
+	var paid_endpoint: Variant = current_segment.get("endpoint_node")
+	if paid and _node_is_available(paid_endpoint):
+		start_node = paid_endpoint as Node2D
+	var replacement: Dictionary = planner.plan_growth(start_position, target_position, network_system, start_node)
+	if checked_task_id != _task_id or checked_version != _plan_version \
+			or checked_segment != _segment_index or checked_anchor != _anchor \
+			or paid != _extension_paid or segment_distance != _segment_distance or not has_active_task():
+		preview["error"] = "任务已变化，请重新预览。"
+		return preview
+	if not bool(replacement.get("valid", false)):
+		preview["error"] = String(replacement.get("error", "新目标没有可行路线。"))
+		return preview
+	if float(replacement.get("distance", 0.0)) == 0.0 and not paid and not _anchor is HyphaNode:
+		preview["error"] = "目标必须与母核保持距离。"
+		return preview
+	var locked_cost: int = int(current_segment["junction_cost"]) if paid else 0
+	var replacement_cost: int = int(replacement["total_cost"])
+	if replacement_cost > MAX_TASK_ID - _consumed_nutrition - locked_cost:
+		preview["error"] = "新目标费用超出整数范围。"
+		return preview
+	preview["valid"] = true
+	preview["plan"] = replacement
+	preview["effective_point"] = start_position
+	preview["resolved_target_position"] = replacement.get("effective_point", target_position)
+	preview["deferred"] = paid
+	preview["new_remaining_cost"] = locked_cost + replacement_cost
+	preview["cost_delta"] = int(preview["new_remaining_cost"]) - int(preview["old_remaining_cost"])
+	preview["from_position"] = start_position
+	preview["locked_remaining_cost"] = locked_cost
+	preview["locked_remaining_distance"] = maxf(0.0, float(current_segment["length"]) - segment_distance) if paid else 0.0
+	return preview
+
+
+func retarget_target(target_position: Vector2) -> bool:
+	var checked_task_id: int = _task_id
+	var checked_version: int = _plan_version
+	var preview: Dictionary = preview_retarget(target_position)
+	if not bool(preview["valid"]) or checked_task_id != _task_id or checked_version != _plan_version \
+			or not has_active_task() or _changing_topology or _retargeting:
+		return false
+	_retargeting = true
+	var replacement: Dictionary = preview["plan"]
+	_target_position = target_position
+	_resolved_target_position = preview["resolved_target_position"]
+	_target_node = replacement.get("join_node") as HyphaNode
+	_plan_version += 1
+	_plan = replacement.duplicate(true)
+	_total_cost = _consumed_nutrition + int(preview["new_remaining_cost"])
+	_total_distance = _distance + float(preview["locked_remaining_distance"]) + float(replacement["distance"])
+	_supply_wait_reason = &""
+	if bool(preview["deferred"]):
+		_pending_retarget = preview.duplicate(true)
+		_pending_retarget["plan_version"] = _plan_version
+		_segments.resize(_segment_index + 1)
+		if bool(_segments[_segment_index].get("is_branch", false)) and not _connection_edges.has(_edge):
+			_connection_edges.append(_edge)
+	else:
+		_pending_retarget = {}
+		_set_remaining_segments(replacement)
+		if not _connection_edges.has(_edge):
+			_connection_edges.append(_edge)
+	_retargeting = false
+	if _segments.is_empty():
+		_complete_at_current_anchor()
+	else:
+		_refresh_state()
+		_publish_changed()
+	return true
+
+
+## 供养账本独占调用：只取因新计划缩短而超出剩余总需求的未消费缓存。
+func take_excess_nutrition(task_id: int, maximum: int = MAX_TASK_ID) -> int:
+	if task_id != _task_id or maximum <= 0:
+		return 0
+	var excess: int = mini(maximum, maxi(0, _buffered_nutrition - (_total_cost - _consumed_nutrition)))
+	if excess <= 0:
+		return 0
+	_buffered_nutrition -= excess
+	_publish_changed()
+	return excess
 
 
 ## 原地使用两个既有菌结；与普通生长共用尖端、任务编号和供养账本。
@@ -92,7 +217,7 @@ func create_connection(start_node: HyphaNode, target_node: HyphaNode) -> int:
 
 func _create_task(
 	start_node: Node2D, target_position: Vector2, task_kind: StringName,
-	target_node: HyphaNode = null, connection_core: MotherCore = null
+	target_node: HyphaNode = null, connection_core: MotherCore = null, initial_plan_version: int = 1
 ) -> int:
 	if construction_blocker.is_valid() and bool(construction_blocker.call()):
 		return 0
@@ -104,18 +229,20 @@ func _create_task(
 		return 0
 	if not (start_node is HyphaNode or start_node is MotherCore):
 		return 0
-	if not network_system.is_connected_to_core(start_node):
+	if not network_system.is_work_connected_to_core(start_node):
 		return 0
 	if not _node_is_available(start_node):
 		return 0
 	if task_kind == &"connection" and not _new_connection_is_valid(
 			start_node, target_node, connection_core, target_position):
 		return 0
-	var planned: Dictionary = planner.plan(
-		start_node.global_position, target_position, task_kind == &"connection"
-	)
+	var planned: Dictionary = preview_target(start_node, target_position) if task_kind == &"growth" else planner.plan(
+		start_node.global_position, target_position, true)
 	if not planned["valid"] or float(planned["distance"]) <= 0.0:
 		return 0
+	var joined_node: Variant = planned.get("join_node")
+	if task_kind == &"growth" and _node_is_available(joined_node):
+		target_node = joined_node as HyphaNode
 	# 查询网络可同步触发外部回调；登记前重新拒绝回调中新建的其他任务。
 	if has_active_task() or _changing_topology or _buffered_nutrition > 0 \
 			or not _configuration_is_valid() or not _node_is_available(start_node):
@@ -135,6 +262,9 @@ func _create_task(
 		registered = network_system.register_edge(new_edge)
 	if registered and task_kind == &"connection":
 		registered = _new_connection_is_valid(start_node, target_node, connection_core, target_position)
+	if registered and task_kind == &"growth" and target_node != null:
+		registered = _node_is_available(target_node) and network_system.is_node_registered(target_node) \
+			and target_node.global_position == planned["end_position"] and target_node.is_functional()
 	if not registered:
 		network_system.unregister_edge(new_edge)
 		network_system.unregister_node(new_tip)
@@ -155,11 +285,15 @@ func _create_task(
 	_connection_core = connection_core
 	_unbind_connection_network()
 	_connection_edges.clear()
+	_connection_edges.append(new_edge)
 	if task_kind == &"connection":
 		_connection_network = network_system
 		_connection_network.network_changed.connect(_on_connection_network_changed)
-		_connection_edges.append(new_edge)
 	_target_position = target_position
+	_resolved_target_position = planned["end_position"]
+	_plan_version = maxi(1, initial_plan_version)
+	_plan = planned.duplicate(true)
+	_pending_retarget = {}
 	_tip_position = new_tip.global_position
 	_total_distance = planned["distance"]
 	_distance = 0.0
@@ -173,6 +307,7 @@ func _create_task(
 	_extension_paid = false
 	_shipments.clear()
 	_anchor = start_node
+	_branch_anchor = null
 	_tip = new_tip
 	_edge = new_edge
 	_changing_topology = false
@@ -206,6 +341,7 @@ func cancel_task() -> bool:
 	_state = &"cancelled"
 	_wait_reason = &""
 	_supply_wait_reason = &""
+	_pending_retarget = {}
 	_changing_topology = true
 	if _node_is_available(_tip):
 		_tip_position = _tip.global_position
@@ -234,7 +370,12 @@ func cancel_task() -> bool:
 	if _node_is_available(old_tip):
 		if _node_is_available(network_system):
 			network_system.unregister_node(old_tip)
-		old_tip.free()
+		# 死亡事件在尖端自身发出，不能同步释放正在发信号的对象。
+		if not old_tip.is_attackable():
+			old_tip.hide()
+			old_tip.queue_free()
+		else:
+			old_tip.free()
 	_changing_topology = false
 	if _task_kind == &"connection":
 		_unbind_connection_network()
@@ -246,6 +387,19 @@ func cancel_task() -> bool:
 
 func has_active_task() -> bool:
 	return _task_id > 0 and (_state == &"waiting" or _state == &"extending" or _state == &"paused")
+
+
+## 根生命周期在尖端死亡后调用；沿用取消、退款及保留已付费菌丝的语义。
+func abort_destroyed_tip(tip: GrowthTip) -> bool:
+	if not is_instance_valid(tip) or tip != _tip or not has_active_task():
+		return false
+	return cancel_task()
+
+
+## 统计读取不刷新任务，不因查询触发断路取消或运输结算。
+func get_resource_snapshot() -> Dictionary:
+	return {"task_id": _task_id, "consumed_nutrition": _consumed_nutrition,
+		"buffered_nutrition": _buffered_nutrition}
 
 
 func get_task_snapshot() -> Dictionary:
@@ -270,6 +424,12 @@ func get_task_snapshot() -> Dictionary:
 		"start_node": _start_node if _node_is_available(_start_node) else null,
 		"target_node": _target_node if _node_is_available(_target_node) else null,
 		"target_position": _target_position,
+		"resolved_target_position": _resolved_target_position,
+		"plan_version": _plan_version,
+		"plan": _plan.duplicate(true),
+		"retarget_pending": not _pending_retarget.is_empty(),
+		"pending_retarget": _pending_retarget.duplicate(true),
+		"excess_nutrition": maxi(0, _buffered_nutrition - (_total_cost - _consumed_nutrition)),
 		"tip_position": _tip_position,
 		"formed_junctions": _formed_junctions,
 	}
@@ -331,7 +491,7 @@ func set_supply_wait_reason(task_id: int, reason: StringName) -> void:
 
 
 func advance(delta: float) -> void:
-	if not has_active_task() or _state == &"paused" or _advancing or _changing_topology:
+	if not has_active_task() or _state == &"paused" or _advancing or _changing_topology or _retargeting:
 		return
 	if not is_finite(delta) or delta <= 0.0:
 		return
@@ -377,8 +537,9 @@ func advance(delta: float) -> void:
 		if _segment_distance < segment_length or _buffered_nutrition < int(segment["junction_cost"]):
 			break
 		var completing_segment: int = _segment_index
+		var completing_anchor: Node2D = _anchor
 		_form_junction()
-		if remaining_time <= 0.0 or _segment_index == completing_segment:
+		if remaining_time <= 0.0 or (_segment_index == completing_segment and _anchor == completing_anchor):
 			break
 	_advancing = false
 
@@ -395,8 +556,17 @@ func _configuration_is_valid() -> bool:
 
 
 func _geometry_is_valid() -> bool:
-	return _node_is_available(_tip) and _node_is_available(_edge) and _node_is_available(_anchor) \
-		and _edge.start_node == _anchor and _edge.end_node == _tip
+	if not _node_is_available(_tip) or not _node_is_available(_edge) or not _node_is_available(_anchor) \
+			or _edge.start_node != _anchor or _edge.end_node != _tip:
+		return false
+	if planner == null or planner.terrain_navigation == null:
+		return true
+	if not is_instance_valid(planner.terrain_navigation) or _segment_index >= _segments.size():
+		return false
+	var segment: Dictionary = _segments[_segment_index]
+	return _anchor.global_position == segment["start_position"] \
+		and planner.terrain_navigation.is_segment_clear(
+			_anchor.global_position, segment["end_position"], GrowthPlanner.TERRAIN_CLEARANCE)
 
 
 func _can_advance() -> bool:
@@ -404,7 +574,7 @@ func _can_advance() -> bool:
 		or not is_finite(growth_speed) or growth_speed <= 0.0:
 		return false
 	var checked_task_id: int = _task_id
-	var connected: bool = network_system.is_connected_to_core(_tip)
+	var connected: bool = network_system.is_work_connected_to_core(_tip)
 	if _task_kind == &"connection":
 		connected = connected and _connection_target_is_valid() and _connection_source_is_available()
 	return checked_task_id == _task_id and has_active_task() and _state != &"paused" \
@@ -432,13 +602,16 @@ func _refresh_state() -> bool:
 	if _task_kind == &"connection" and not _connection_target_is_valid():
 		cancel_task()
 		return true
+	if _task_kind == &"growth" and _target_node != null and not _growth_join_is_valid(_target_node, _resolved_target_position):
+		cancel_task()
+		return true
 	var previous_state: StringName = _state
 	var previous_reason: StringName = _wait_reason
 	var checked_task_id: int = _task_id
 	var connected: bool = false
 	if _state != &"paused" and _configuration_is_valid() and _geometry_is_valid() \
 		and is_finite(growth_speed) and growth_speed > 0.0:
-		connected = network_system.is_connected_to_core(_tip)
+		connected = network_system.is_work_connected_to_core(_tip)
 		if _task_kind == &"connection":
 			connected = connected and _connection_source_is_available()
 	# 网络查询可能同步发出 network_changed；不能覆盖回调已经提交的终态。
@@ -473,27 +646,63 @@ func _form_junction() -> void:
 		return
 	var completed_task_id: int = _task_id
 	var segment: Dictionary = _segments[_segment_index]
-	var junction: HyphaNode = NODE_SCENE.instantiate()
+	var was_branch: bool = bool(segment.get("is_branch", false))
+	var existing_endpoint: Variant = segment.get("endpoint_node")
+	var is_existing: bool = existing_endpoint != null
+	if is_existing and (not _growth_join_is_valid(existing_endpoint, segment["end_position"]) \
+			or network_system.has_direct_connection(_anchor, existing_endpoint)):
+		cancel_task()
+		return
+	if completed_task_id != _task_id or not has_active_task() or not _geometry_is_valid():
+		return
+	var junction: HyphaNode = existing_endpoint as HyphaNode if is_existing else NODE_SCENE.instantiate()
 	_changing_topology = true
 	var junction_cost: int = segment["junction_cost"]
 	_buffered_nutrition -= junction_cost
 	_consumed_nutrition += junction_cost
-	node_container.add_child(junction)
-	junction.global_position = segment["end_position"]
-	network_system.register_node(junction)
+	if not is_existing:
+		node_container.add_child(junction)
+		junction.global_position = segment["end_position"]
+		network_system.register_node(junction)
 	# 先把已完成边接到成熟节点，再注销尖端，防止网络注销连带移除该边。
 	_handoff_tip_endpoint(junction)
-	_anchor = junction
-	_formed_junctions += 1
-	_segment_index += 1
-	var is_final: bool = _segment_index == _segments.size()
+	if is_existing and (not network_system.register_edge(_edge) \
+			or not _growth_join_is_valid(junction, segment["end_position"])):
+		_edge.end_node = _tip
+		network_system.register_edge(_edge)
+		_changing_topology = false
+		cancel_task()
+		return
+	if is_existing and _pending_retarget.is_empty() and _segment_index == _segments.size() - 1 \
+			and _start_node is HyphaNode and _start_node != junction \
+			and not network_system.register_connection_corridor(_start_node as HyphaNode, junction, _connection_edges):
+		_edge.end_node = _tip
+		network_system.register_edge(_edge)
+		_changing_topology = false
+		cancel_task()
+		return
+	if not is_existing:
+		_formed_junctions += 1
+	var next_anchor: Node2D = junction
+	if not _pending_retarget.is_empty():
+		var replacement: Dictionary = _pending_retarget["plan"]
+		_pending_retarget = {}
+		_set_remaining_segments(replacement)
+	elif was_branch:
+		_segment_index += 1
+		next_anchor = _branch_anchor
+		_branch_anchor = null
+	else:
+		_segment_index += 1
+	_anchor = next_anchor
+	var is_final: bool = _segment_index >= _segments.size()
 	if is_final:
 		_state = &"completed"
 		_completed_endpoints[completed_task_id] = junction
 		_wait_reason = &""
 		_supply_wait_reason = &""
 		_distance = _total_distance
-		_tip_position = _target_position
+		_tip_position = junction.global_position
 		var old_tip: GrowthTip = _tip
 		_tip = null
 		_edge = null
@@ -502,24 +711,87 @@ func _form_junction() -> void:
 	else:
 		_segment_distance = 0.0
 		_extension_paid = false
-		_tip.global_position = junction.global_position
+		if not _node_is_available(next_anchor):
+			_changing_topology = false
+			cancel_task()
+			return
+		_tip.global_position = next_anchor.global_position
 		_tip_position = _tip.global_position
+		var next_is_branch: bool = bool(_segments[_segment_index].get("is_branch", false))
+		if next_is_branch:
+			_branch_anchor = next_anchor as HyphaNode
 		var next_edge: HyphaEdge = EDGE_SCENE.instantiate()
-		next_edge.start_node = junction
+		next_edge.start_node = next_anchor
 		next_edge.end_node = _tip
 		edge_container.add_child(next_edge)
 		_edge = next_edge
 		network_system.register_edge(next_edge)
-		if _task_kind == &"connection":
+		if _task_kind == &"connection" or not next_is_branch:
 			_connection_edges.append(next_edge)
 		_state = &"waiting"
 		_supply_wait_reason = &""
 	_changing_topology = false
 	_refresh_state()
 	_publish_changed()
-	junction_formed.emit(junction)
+	if not is_existing:
+		junction_formed.emit(junction)
 	if is_final:
 		task_completed.emit(completed_task_id)
+
+
+func _invalid_target_plan(target_position: Vector2, error: String) -> Dictionary:
+	var segments: Array[Dictionary] = []
+	return {
+		"valid": false, "error": error, "start_position": Vector2.ZERO,
+		"end_position": target_position, "requested_position": target_position,
+		"effective_point": target_position, "join_node": null, "distance": 0.0,
+		"segments": segments, "junction_positions": PackedVector2Array(),
+		"extension_cost": 0, "junction_cost": 0, "total_cost": 0,
+	}
+
+
+func _growth_join_is_valid(endpoint: Variant, position: Vector2) -> bool:
+	return _node_is_available(endpoint) and endpoint is HyphaNode \
+		and _node_is_available(network_system) and network_system.is_node_registered(endpoint) \
+		and endpoint.is_functional() and endpoint.global_position == position
+
+
+func _set_remaining_segments(planned: Dictionary) -> void:
+	_segments = []
+	for segment: Dictionary in planned.get("segments", []):
+		var remaining_segment: Dictionary = segment.duplicate(true)
+		remaining_segment["cumulative_distance"] = float(segment["cumulative_distance"]) + _distance
+		_segments.append(remaining_segment)
+	_segment_index = 0
+	_segment_distance = 0.0
+	_extension_paid = false
+	_branch_anchor = null
+
+
+func _complete_at_current_anchor() -> void:
+	if not has_active_task() or not _anchor is HyphaNode or not _node_is_available(_anchor):
+		return
+	var completed_task_id: int = _task_id
+	var old_tip: GrowthTip = _tip
+	var old_edge: HyphaEdge = _edge
+	_changing_topology = true
+	_state = &"completed"
+	_completed_endpoints[completed_task_id] = _anchor as HyphaNode
+	_tip_position = _anchor.global_position
+	_distance = _total_distance
+	_wait_reason = &""
+	_supply_wait_reason = &""
+	_tip = null
+	_edge = null
+	if _node_is_available(old_edge):
+		network_system.unregister_edge(old_edge)
+		old_edge.free()
+	if _node_is_available(old_tip):
+		network_system.unregister_node(old_tip)
+		old_tip.free()
+	_changing_topology = false
+	_publish_changed()
+	task_completed.emit(completed_task_id)
 
 
 func _new_connection_is_valid(

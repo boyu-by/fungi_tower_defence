@@ -11,6 +11,8 @@ var _edges: Dictionary[int, HyphaEdge] = {}
 var _edge_order: Array[int] = []
 var _node_exit_callbacks: Dictionary[int, Callable] = {}
 var _edge_exit_callbacks: Dictionary[int, Callable] = {}
+var _node_health_callbacks: Dictionary[int, Callable] = {}
+var _edge_traffic_callbacks: Dictionary[int, Callable] = {}
 var _mother_core_id: int = 0
 var _connection_corridors: Array[NetworkRoute] = []
 
@@ -23,6 +25,15 @@ func _on_node_tree_exiting(node_id: int) -> void:
 func _on_edge_tree_exiting(edge_id: int) -> void:
 	if _remove_edge_registration(edge_id):
 		network_changed.emit()
+
+
+func _on_node_health_changed(_current: float, _maximum: float) -> void:
+	# 失效和复活保留物理登记，只通知可用连通性及共享交通重读生命门控。
+	network_changed.emit()
+
+
+func _on_edge_traffic_changed() -> void:
+	network_changed.emit()
 
 
 func register_node(node: Node2D, is_mother_core: bool = false) -> bool:
@@ -39,6 +50,10 @@ func register_node(node: Node2D, is_mother_core: bool = false) -> bool:
 		_nodes[node_id] = node
 		_node_exit_callbacks[node_id] = exit_callback
 		node.tree_exiting.connect(exit_callback)
+		if node.has_signal("health_changed"):
+			var health_callback: Callable = _on_node_health_changed
+			_node_health_callbacks[node_id] = health_callback
+			node.connect("health_changed", health_callback)
 	if is_mother_core and _mother_core_id != node_id:
 		_mother_core_id = node_id
 		changed = true
@@ -70,6 +85,9 @@ func register_edge(edge: HyphaEdge) -> bool:
 	_edge_order.append(edge_id)
 	_edge_exit_callbacks[edge_id] = exit_callback
 	edge.tree_exiting.connect(exit_callback)
+	var traffic_callback: Callable = _on_edge_traffic_changed
+	_edge_traffic_callbacks[edge_id] = traffic_callback
+	edge.traffic_settings_changed.connect(traffic_callback)
 	network_changed.emit()
 	return true
 
@@ -102,6 +120,10 @@ func get_registered_edges() -> Array[HyphaEdge]:
 
 func is_node_registered(node: Node2D) -> bool:
 	return _is_registered_node(node)
+
+
+func is_node_functional(node: Node2D) -> bool:
+	return _is_registered_node(node) and _node_is_functional(node)
 
 
 ## 物理有效性与通行开关、容量无关；临时关闭仍保留同一条边。
@@ -221,6 +243,20 @@ func is_available_connected_to_core(node: Node2D) -> bool:
 	return find_available_route(node, _get_registered_node(_mother_core_id)).found
 
 
+## 已送达的建设缓存不依赖交通入口临时开关；真实断丝和枯结仍停止工作。
+func is_work_connected_to_core(node: Node2D) -> bool:
+	var core: Node2D = _get_registered_node(_mother_core_id)
+	if not is_node_functional(node) or not is_node_functional(core):
+		return false
+	if node == core:
+		return true
+	var broken: Dictionary[int, bool] = {}
+	for edge: HyphaEdge in get_registered_edges():
+		if edge.health <= 0.0:
+			broken[edge.get_instance_id()] = true
+	return not _find_segments(node.get_instance_id(), core.get_instance_id(), 0, broken).is_empty()
+
+
 ## 只读的最少段数可用路线；用于采集准入，运输改道仍由 TransportRouter 计成本。
 func find_available_route(start: Node2D, end: Node2D, units: int = 1) -> NetworkRoute:
 	var route: NetworkRoute = NetworkRoute.new()
@@ -228,7 +264,7 @@ func find_available_route(start: Node2D, end: Node2D, units: int = 1) -> Network
 		route.start_node = start
 	if is_instance_valid(end):
 		route.end_node = end
-	if units <= 0 or not _is_registered_node(start) or not _is_registered_node(end):
+	if units <= 0 or not is_node_functional(start) or not is_node_functional(end):
 		return route
 	if start == end:
 		route.found = true
@@ -254,7 +290,7 @@ func find_available_route_avoiding(start: Node2D, end: Node2D,
 		route.start_node = start
 	if is_instance_valid(end):
 		route.end_node = end
-	if units <= 0 or not _is_registered_node(start) or not _is_registered_node(end):
+	if units <= 0 or not is_node_functional(start) or not is_node_functional(end):
 		return route
 	var excluded_ids: Dictionary[int, bool] = {}
 	for edge: HyphaEdge in excluded_edges:
@@ -290,7 +326,7 @@ func find_route(start: Node2D, end: Node2D) -> NetworkRoute:
 	if is_instance_valid(end):
 		route.end_node = end
 	_prune_registrations()
-	if not _is_registered_node(start) or not _is_registered_node(end):
+	if not is_node_functional(start) or not is_node_functional(end):
 		return route
 	if start == end:
 		route.found = true
@@ -361,6 +397,10 @@ func _is_registered_node(node: Variant) -> bool:
 	return _nodes.has(node.get_instance_id())
 
 
+func _node_is_functional(node: Node2D) -> bool:
+	return not node.has_method("is_functional") or bool(node.call("is_functional"))
+
+
 ## null 或外部修改后的未登记端点暂时停用边，不缓存邻接关系。
 func _has_registered_endpoints(edge: HyphaEdge) -> bool:
 	if not is_instance_valid(edge.start_node) or not is_instance_valid(edge.end_node):
@@ -383,8 +423,13 @@ func _remove_node_registration(node_id: int) -> bool:
 		var exit_callback: Callable = _node_exit_callbacks[node_id]
 		if removed_node.tree_exiting.is_connected(exit_callback):
 			removed_node.tree_exiting.disconnect(exit_callback)
+		if _node_health_callbacks.has(node_id):
+			var health_callback: Callable = _node_health_callbacks[node_id]
+			if removed_node.is_connected("health_changed", health_callback):
+				removed_node.disconnect("health_changed", health_callback)
 	_nodes.erase(node_id)
 	_node_exit_callbacks.erase(node_id)
+	_node_health_callbacks.erase(node_id)
 	if _mother_core_id == node_id:
 		_mother_core_id = 0
 	return true
@@ -399,9 +444,13 @@ func _remove_edge_registration(edge_id: int) -> bool:
 		var exit_callback: Callable = _edge_exit_callbacks[edge_id]
 		if edge.tree_exiting.is_connected(exit_callback):
 			edge.tree_exiting.disconnect(exit_callback)
+		var traffic_callback: Callable = _edge_traffic_callbacks.get(edge_id, Callable())
+		if traffic_callback.is_valid() and edge.traffic_settings_changed.is_connected(traffic_callback):
+			edge.traffic_settings_changed.disconnect(traffic_callback)
 	_edges.erase(edge_id)
 	_edge_order.erase(edge_id)
 	_edge_exit_callbacks.erase(edge_id)
+	_edge_traffic_callbacks.erase(edge_id)
 	return true
 
 
@@ -425,6 +474,8 @@ func _build_adjacency(units: int = 0, excluded_ids: Dictionary = {}) -> Dictiona
 	for edge_id: int in _edge_order:
 		var edge: HyphaEdge = _get_registered_edge(edge_id)
 		if edge == null or not _has_registered_endpoints(edge):
+			continue
+		if not _node_is_functional(edge.start_node) or not _node_is_functional(edge.end_node):
 			continue
 		if excluded_ids.has(edge_id):
 			continue

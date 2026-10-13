@@ -156,7 +156,7 @@ func _observe(level: Node2D, source: LargeCarcass, label: String, mixed: bool = 
 		"resource_id": source.get_resource_id(), "last_harvested": 0,
 		"initial_core": int(level.mother_core.nutrition),
 		"initial_resources": 0, "external_nutrition": ORDINARY_NUTRITION if mixed else 0,
-		"shots": 0, "resource_events": [], "batches": {}, "production": [],
+		"shots": 0, "nutrition_spent": 0, "resource_events": [], "batches": {}, "production": [],
 		"arrivals": [], "progress": [], "return_packets": {},
 		"packet_arrivals": [], "packet_interruptions": [], "replayed_callbacks": 0,
 		"exhausted_signals": 0,
@@ -231,8 +231,9 @@ func _observe(level: Node2D, source: LargeCarcass, label: String, mixed: bool = 
 		var progress: Array = evidence["progress"]
 		progress.append({"total": total, "count": count}))
 	for weapon: SporeWeapon in level.get_weapons():
-		weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void:
-			evidence["shots"] = int(evidence["shots"]) + 1)
+		weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
+			evidence["shots"] = int(evidence["shots"]) + 1
+			evidence["nutrition_spent"] = int(evidence["nutrition_spent"]) + spent)
 	return evidence
 
 
@@ -329,7 +330,7 @@ func _resource_snapshot(level: Node2D, source: LargeCarcass, evidence: Dictionar
 		"growth_buffer": int(growth["buffered_nutrition"]),
 		"growth_in_transit": int(level.growth_supply_system.get_in_transit_count()),
 		"growth_consumed": int(growth["consumed_nutrition"]),
-		"shots_consumed": int(evidence["shots"]) * SporeWeapon.SHOT_NUTRITION,
+		"shots_consumed": int(evidence["nutrition_spent"]),
 	}
 	var total: int = 0
 	for amount: int in parts.values():

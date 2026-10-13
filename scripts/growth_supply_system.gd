@@ -44,6 +44,7 @@ class TaskAccount:
 	var consumed: int = 0
 	var lots: Array[Shipment] = []
 	var draining: bool = false
+	var rebalancing: bool = false
 
 @export var growth_system: GrowthSystem
 @export var mother_core: MotherCore
@@ -141,6 +142,8 @@ func _on_task_changed(snapshot: Dictionary, receiver_id: int) -> void:
 	_sync_consumption(account, snapshot)
 	if _is_terminal_snapshot(snapshot):
 		_finish_task(account)
+	else:
+		_rebalance_task(account)
 	# 不在 task_changed 中更新等待原因，否则 set_supply_wait_reason 会重入此信号。
 
 
@@ -282,7 +285,7 @@ func get_in_transit_count() -> int:
 	return _in_transit.size()
 
 
-## 库存与已付款的器官在途包都覆盖两次射击的缺口，不更改任何战斗库存。
+## 库存与已付款的器官在途包都覆盖两轮射击的实际成本，不更改任何战斗库存。
 func get_combat_reserve() -> int:
 	if not is_instance_valid(combat_supply_system) or combat_supply_system.is_queued_for_deletion():
 		return 0
@@ -290,7 +293,7 @@ func get_combat_reserve() -> int:
 	var organs: Array[AttackOrgan] = combat_supply_system.get_active_organs()
 	for organ: AttackOrgan in organs:
 		if is_instance_valid(organ) and not organ.is_queued_for_deletion():
-			reserve += maxi(0, 2 * SporeWeapon.SHOT_NUTRITION \
+			reserve += maxi(0, 2 * organ.get_shot_nutrition_cost() \
 				- organ.nutrition - organ.incoming_nutrition)
 	return reserve
 
@@ -589,6 +592,62 @@ func _finish_task(account: TaskAccount) -> void:
 			_cancel_shipment(shipment)
 	_drain_buffer(account)
 	_settlement_depth -= 1
+
+
+## 改目标沿用同一来源账本。保留能覆盖新任务的货物，只退真正超出的未消费批次。
+func _rebalance_task(account: TaskAccount) -> void:
+	if account.rebalancing or account.draining or not _is_live_receiver(account.receiver):
+		return
+	account.rebalancing = true
+	_settlement_depth += 1
+	var receiver: GrowthSystem = account.receiver
+	var snapshot: Dictionary = receiver.get_task_snapshot()
+	if int(snapshot.get("task_id", 0)) == account.task_id and not _is_terminal_snapshot(snapshot):
+		var excess: int = maxi(0, int(snapshot.get("buffered_nutrition", 0)) - int(snapshot.get("remaining_cost", 0)))
+		var refundable: Array[Shipment] = []
+		# 核销仍按 FIFO；缩短计划从最后接受的未消费包退款。
+		var reversed_lots: Array[Shipment] = account.lots.duplicate()
+		reversed_lots.reverse()
+		for lot: Shipment in reversed_lots:
+			if refundable.size() >= excess:
+				break
+			if lot.buffered == PACKET_NUTRITION and not lot.refunded:
+				# 先标记来源退出缓存，take_excess 的同步通知不能把退款包确认为主脉通行。
+				lot.buffered = 0
+				refundable.append(lot)
+		var withdrawn: int = receiver.take_excess_nutrition(account.task_id, refundable.size())
+		for lot_index: int in range(refundable.size()):
+			var lot: Shipment = refundable[lot_index]
+			if lot_index < withdrawn:
+				_refund_shipment(lot)
+			else:
+				lot.buffered = PACKET_NUTRITION
+		var shipment_ids: Array[int] = []
+		for shipment_id: int in _in_transit:
+			var shipment: Shipment = _in_transit[shipment_id]
+			if shipment.receiver_id == account.receiver_id and shipment.task_id == account.task_id:
+				shipment_ids.append(shipment_id)
+		shipment_ids.sort()
+		shipment_ids.reverse()
+		for shipment_id: int in shipment_ids:
+			if not _is_live_receiver(receiver):
+				break
+			snapshot = receiver.get_task_snapshot()
+			if int(snapshot.get("task_id", 0)) != account.task_id or _is_terminal_snapshot(snapshot):
+				break
+			var allowance: int = maxi(0, int(snapshot["remaining_cost"]) - int(snapshot["buffered_nutrition"]))
+			if _outstanding_for(receiver, account.task_id) <= allowance:
+				break
+			var shipment: Shipment = _in_transit.get(shipment_id)
+			if shipment != null:
+				_cancel_shipment(shipment)
+	account.rebalancing = false
+	_settlement_depth -= 1
+	if _is_live_receiver(receiver):
+		snapshot = receiver.get_task_snapshot()
+		if int(snapshot.get("task_id", 0)) == account.task_id and _is_terminal_snapshot(snapshot):
+			_finish_task(account)
+	_emit_supply_changed()
 
 
 func _stop_task(account: TaskAccount) -> void:

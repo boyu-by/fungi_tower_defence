@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/systems/enemy_spawner.tscn" id="1_spawner"]
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="Resource" path="res://resources/enemies/spawn_entries/normal_pair.tres" id="3_normal"]
+[ext_resource type="Resource" path="res://resources/enemies/spawn_entries/swarm_group.tres" id="4_swarm"]
+[ext_resource type="Resource" path="res://resources/enemies/spawn_entries/armored_single.tres" id="5_armored"]
+
+[node name="MixedEnemyBatch" instance=ExtResource("1_spawner")]
+spawn_entries = Array[ExtResource("2_entry")]([ExtResource("3_normal"), ExtResource("4_swarm"), ExtResource("5_armored")])

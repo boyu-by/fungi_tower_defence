@@ -66,12 +66,15 @@ var _is_resetting: bool = false
 var _is_exiting: bool = false
 var _wait_reason: StringName = &"empty"
 var _dispatch_timer: Timer
-var _observed_source: DigestiveOrgan
+var _registered_digestives: Dictionary[int, DigestiveOrgan] = {}
+var _observed_sources: Dictionary[int, DigestiveOrgan] = {}
+var _source_exit_callbacks: Dictionary[int, Callable] = {}
 var _observed_network: NetworkSystem
 
 
 func _enter_tree() -> void:
 	_is_exiting = false
+	_sync_dependency_listeners()
 
 
 func _ready() -> void:
@@ -146,6 +149,50 @@ func _on_owner_removed(owner_id: int) -> void:
 			_settle_attempt(shipment.attempt_id, false)
 
 
+func _on_registered_source_removed(source_id: int) -> void:
+	_registered_digestives.erase(source_id)
+	var raw_source: Variant = _observed_sources.get(source_id)
+	var callback: Callable = _source_exit_callbacks.get(source_id, Callable())
+	_observed_sources.erase(source_id)
+	_source_exit_callbacks.erase(source_id)
+	if is_instance_valid(raw_source):
+		_disconnect_signal(raw_source.output_changed, _on_source_output_changed)
+		if callback.is_valid():
+			_disconnect_signal(raw_source.tree_exiting, callback)
+	_on_owner_removed(source_id)
+
+
+func register_digestive(organ: DigestiveOrgan) -> bool:
+	if not _is_live_node(organ) or not organ.is_attackable():
+		return false
+	_registered_digestives[organ.get_instance_id()] = organ
+	_sync_dependency_listeners()
+	return true
+
+
+func unregister_digestive(organ: DigestiveOrgan) -> void:
+	if not is_instance_valid(organ):
+		return
+	var source_id: int = organ.get_instance_id()
+	_registered_digestives.erase(source_id)
+	if digestive_organ == organ:
+		digestive_organ = null
+	cancel_source(organ)
+	_sync_dependency_listeners()
+	if not _is_exiting and not _is_resetting:
+		_emit_return_changed()
+
+
+func get_digestive_organs() -> Array[DigestiveOrgan]:
+	var organs: Array[DigestiveOrgan] = []
+	if _is_live_node(digestive_organ) and digestive_organ.is_attackable():
+		organs.append(digestive_organ)
+	for raw_organ: Variant in _registered_digestives.values():
+		if _is_live_node(raw_organ) and raw_organ.is_attackable() and not organs.has(raw_organ):
+			organs.append(raw_organ as DigestiveOrgan)
+	return organs
+
+
 func try_dispatch() -> bool:
 	if _is_dispatching or _is_resetting or _is_exiting or not is_inside_tree():
 		return false
@@ -178,6 +225,7 @@ func get_shipment_records() -> Array[Dictionary]:
 	for shipment: Shipment in _attempt_records:
 		records.append({
 			"attempt_id": shipment.attempt_id, "product_id": shipment.product_id,
+			"source_id": shipment.source_id, "source": shipment.source,
 			"cargo_id": shipment.cargo_id, "cargo_generation": shipment.cargo_generation,
 			"nutrition": shipment.nutrition, "status": shipment.status,
 			"packet": shipment.packet if is_instance_valid(shipment.packet) else null,
@@ -190,15 +238,16 @@ func get_shipment_records() -> Array[Dictionary]:
 func get_return_snapshot() -> Dictionary:
 	var queued_count: int = 0
 	var queued_nutrition: int = 0
-	if is_instance_valid(digestive_organ):
-		for product: Dictionary in digestive_organ.get_output_products():
+	var sources: Array[DigestiveOrgan] = get_digestive_organs()
+	for source: DigestiveOrgan in sources:
+		for product: Dictionary in source.get_output_products():
 			if product["status"] == &"queued":
 				queued_count += 1
 				queued_nutrition += int(product["nutrition"])
 	var reason: StringName = _wait_reason
 	if queued_count == 0:
 		reason = &"in_transit" if get_in_transit_count() > 0 else &"empty"
-	elif not _is_live_node(digestive_organ) or not digestive_organ.is_inside_tree():
+	elif sources.is_empty():
 		reason = &"source_unavailable"
 	elif not _is_alive_core(mother_core) or not mother_core.is_inside_tree():
 		reason = &"core_unavailable"
@@ -207,6 +256,7 @@ func get_return_snapshot() -> Dictionary:
 	elif reason == &"empty" or reason == &"in_transit":
 		reason = &"ready"
 	return {
+		"source_count": sources.size(),
 		"in_transit_count": get_in_transit_count(),
 		"in_transit_nutrition": get_in_transit_nutrition(),
 		"queued_count": queued_count, "queued_nutrition": queued_nutrition,
@@ -245,7 +295,7 @@ func reset() -> void:
 
 
 func _dispatch_one(generation: int) -> bool:
-	if not _is_live_node(digestive_organ) or not digestive_organ.is_inside_tree():
+	if get_digestive_organs().is_empty():
 		return _reject(&"source_unavailable", "胃囊已退出，无法回流营养")
 	if not _is_alive_core(mother_core) or not mother_core.is_inside_tree():
 		return _reject(&"core_unavailable", "母核无法接收回流营养")
@@ -258,36 +308,24 @@ func _dispatch_one(generation: int) -> bool:
 		return _reject(&"traffic_unavailable", "回流缺少有效的共享交通调度器")
 
 	# 固定本次运输依赖；导出引用修改只能影响之后的派遣。
-	var source: DigestiveOrgan = digestive_organ
 	var core: MotherCore = mother_core
 	var network: NetworkSystem = network_system
 	var dispatcher: Variant = traffic_system
 	var require_traffic: bool = traffic_required or dispatcher != null
 	var container: Node2D = packet_container
 	var scene: PackedScene = packet_scene
-	var source_node: Node2D = source.get_parent() as Node2D
-	if not _is_live_node(source_node):
-		return _reject(&"source_unavailable", "胃囊所在菌结已退出")
-	var product: Dictionary = _choose_product(source, core, generation)
-	if not _is_current_generation(generation) or not _is_live_node(source) or (
-		not _is_alive_core(core) or not _is_live_node(network) or not _is_live_node(container)
-	):
-		return false
-	if product.is_empty():
-		return _reject(&"empty", "")
-	var route: NetworkRoute = network.find_route(source_node, core)
-	if not _is_current_generation(generation) or not _is_live_node(source) or (
-		not _is_alive_core(core) or not _is_live_node(network) or not _is_live_node(container)
-	):
-		return false
-	var valid_route: bool = route.found and network.is_route_valid(route)
+	var choice: Dictionary = _choose_source(core, network, dispatcher, generation)
+	if choice.is_empty():
+		return _reject(_wait_reason, "") if _is_current_generation(generation) else false
+	var source: DigestiveOrgan = choice["source"]
+	var source_node: Node2D = choice["source_node"]
+	var product: Dictionary = choice["product"]
+	var route: NetworkRoute = choice["route"]
 	if not _is_current_generation(generation) or not _is_live_node(source) or (
 		not _is_live_node(source_node) or not _is_alive_core(core)
 		or not _is_live_node(network) or not _is_live_node(container)
 	):
 		return false
-	if not valid_route:
-		return _reject(&"disconnected", "胃囊到母核的回流线路已断开")
 	var instance: Node = scene.instantiate()
 	if not instance is NutrientPacket:
 		instance.free()
@@ -325,6 +363,64 @@ func _dispatch_one(generation: int) -> bool:
 		else:
 			_settle_attempt(shipment.attempt_id, false)
 	return shipment.status == &"in_transit" or shipment.status == &"delivered"
+
+
+func _choose_source(core: MotherCore, network: NetworkSystem, dispatcher: Variant,
+		generation: int) -> Dictionary:
+	var best: Dictionary = {}
+	var best_score: float = INF
+	var has_queued: bool = false
+	var has_live_source: bool = false
+	for raw_source: Variant in get_digestive_organs():
+		if not _is_current_generation(generation) or not _is_alive_core(core) or not _is_live_node(network):
+			return {}
+		if not _is_live_node(raw_source) or not raw_source.is_inside_tree() or not raw_source.is_functional():
+			continue
+		var source: DigestiveOrgan = raw_source as DigestiveOrgan
+		var source_node: Node2D = source.get_parent() as Node2D
+		if not _is_live_node(source_node):
+			continue
+		has_live_source = true
+		var product: Dictionary = _choose_product(source, core, generation)
+		if not _is_current_generation(generation) or not _is_alive_core(core) or not _is_live_node(network):
+			return {}
+		if not _is_live_node(source):
+			continue
+		if product.is_empty():
+			continue
+		has_queued = true
+		var route: NetworkRoute = network.find_available_route(source_node, core, 1)
+		if not _is_current_generation(generation) or not _is_alive_core(core) or not _is_live_node(network):
+			return {}
+		if not _is_live_node(source):
+			continue
+		if not route.found or not network.is_route_valid(route):
+			continue
+		if not _is_live_node(source) or not source.is_functional() \
+				or not get_digestive_organs().has(source) or not _is_current_generation(generation):
+			continue
+		var score: float = _return_route_score(route, dispatcher)
+		if best.is_empty() or not _is_live_node(best.get("source")) or score < best_score:
+			best_score = score
+			best = {"source": source, "source_node": source_node, "product": product, "route": route}
+	if best.is_empty():
+		_wait_reason = &"disconnected" if has_queued else (&"empty" if has_live_source else &"source_unavailable")
+	elif not _is_live_node(best.get("source")) or not _is_live_node(best.get("source_node")):
+		best.clear()
+	return best
+
+
+func _return_route_score(route: NetworkRoute, dispatcher: Variant) -> float:
+	var score: float = 0.0
+	var speed: float = maxf(packet_speed, 0.001)
+	for segment: NetworkRoute.Segment in route.segments:
+		if not _is_live_node(segment.edge) or not _is_live_node(segment.start_node) \
+				or not _is_live_node(segment.end_node):
+			return INF
+		score += segment.start_node.global_position.distance_to(segment.end_node.global_position) / speed
+		if _is_live_node(dispatcher):
+			score += dispatcher.estimate_wait_seconds(segment.edge, 1, speed)
+	return score
 
 
 func _choose_product(source: DigestiveOrgan, core: MotherCore, generation: int) -> Dictionary:
@@ -427,7 +523,7 @@ func _record_delivery(product_id: String, nutrition: int) -> void:
 
 
 func _can_receive(shipment: Shipment) -> bool:
-	return _is_live_node(shipment.source) and shipment.source.is_inside_tree() and (
+	return _is_live_node(shipment.source) and shipment.source.is_functional() and shipment.source.is_inside_tree() and (
 		_is_live_node(shipment.source_node) and shipment.source_node.is_inside_tree()
 		and shipment.source.get_parent() == shipment.source_node
 	) and _is_alive_core(shipment.core) and shipment.core.is_inside_tree() and (
@@ -531,13 +627,26 @@ func _style_packet(packet: NutrientPacket) -> void:
 
 
 func _sync_dependency_listeners() -> void:
-	if _observed_source != digestive_organ:
-		if is_instance_valid(_observed_source):
-			_disconnect_signal(_observed_source.output_changed, _on_source_output_changed)
-		_observed_source = null
-		if _is_live_node(digestive_organ):
-			_observed_source = digestive_organ
-			_observed_source.output_changed.connect(_on_source_output_changed)
+	var sources: Array[DigestiveOrgan] = get_digestive_organs()
+	for source_id: int in _observed_sources.keys():
+		var raw_source: Variant = _observed_sources[source_id]
+		if not _is_live_node(raw_source) or not sources.has(raw_source):
+			if is_instance_valid(raw_source):
+				_disconnect_signal(raw_source.output_changed, _on_source_output_changed)
+				var callback: Callable = _source_exit_callbacks.get(source_id, Callable())
+				if callback.is_valid():
+					_disconnect_signal(raw_source.tree_exiting, callback)
+			_observed_sources.erase(source_id)
+			_source_exit_callbacks.erase(source_id)
+	for source: DigestiveOrgan in sources:
+		var source_id: int = source.get_instance_id()
+		if _observed_sources.has(source_id):
+			continue
+		_observed_sources[source_id] = source
+		source.output_changed.connect(_on_source_output_changed)
+		var callback: Callable = _on_registered_source_removed.bind(source_id)
+		_source_exit_callbacks[source_id] = callback
+		source.tree_exiting.connect(callback)
 	if _observed_network != network_system:
 		if is_instance_valid(_observed_network):
 			_disconnect_signal(_observed_network.network_changed, _on_network_changed)
@@ -548,11 +657,17 @@ func _sync_dependency_listeners() -> void:
 
 
 func _disconnect_dependency_listeners() -> void:
-	if is_instance_valid(_observed_source):
-		_disconnect_signal(_observed_source.output_changed, _on_source_output_changed)
+	for source_id: int in _observed_sources:
+		var raw_source: Variant = _observed_sources[source_id]
+		if is_instance_valid(raw_source):
+			_disconnect_signal(raw_source.output_changed, _on_source_output_changed)
+			var callback: Callable = _source_exit_callbacks.get(source_id, Callable())
+			if callback.is_valid():
+				_disconnect_signal(raw_source.tree_exiting, callback)
+	_observed_sources.clear()
+	_source_exit_callbacks.clear()
 	if is_instance_valid(_observed_network):
 		_disconnect_signal(_observed_network.network_changed, _on_network_changed)
-	_observed_source = null
 	_observed_network = null
 
 
@@ -606,3 +721,16 @@ func _confirm_passage_tracking(shipment: Shipment) -> void:
 	var tracker: CargoPassageTracker = shipment.cargo_tracker_ref.get_ref() as CargoPassageTracker
 	if is_instance_valid(tracker):
 		tracker.confirm_cargo(shipment.cargo_id, shipment.cargo_generation)
+
+
+## 先归还全部产物领取权，再由组织销毁事务计入实际损耗。
+func cancel_source(source: DigestiveOrgan) -> void:
+	if not is_instance_valid(source):
+		return
+	var source_id: int = source.get_instance_id()
+	_on_owner_removed(source_id)
+	# 母核入账的同步通知中也可能销毁胃囊；正在交接的尝试已经摘出在途表。
+	# 在组织统计损失之前清理母核已收件的实物，避免同一份营养同时算收入和销毁。
+	for shipment: Shipment in _attempt_records.duplicate():
+		if shipment.source_id == source_id and shipment.status == &"settling":
+			_release_product(shipment, _was_received(shipment))

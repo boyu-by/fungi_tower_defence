@@ -1,0 +1,133 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/colony_operations_demo.tscn" id="1_base"]
+
+[sub_resource type="SystemFont" id="Font_map"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
+allow_system_fallback = true
+
+[node name="FirstLevelMap" instance=ExtResource("1_base")]
+
+[node name="Ground" parent="World"]
+offset_bottom = 920.0
+
+[node name="MotherCore" parent="World/Colony"]
+position = Vector2(600, 555)
+max_health = 240
+initial_nutrition = 72
+
+[node name="HyphaNode" parent="World/Colony/Nodes"]
+position = Vector2(470, 480)
+
+[node name="AttackOrgan" parent="World/Colony/Nodes/HyphaNode"]
+initial_nutrition = 4
+
+[node name="RightNode" parent="World/Colony/Nodes"]
+position = Vector2(730, 480)
+
+[node name="AttackOrgan" parent="World/Colony/Nodes/RightNode"]
+initial_nutrition = 4
+
+[node name="RearNode" parent="World/Colony/Nodes"]
+position = Vector2(600, 596)
+
+[node name="HyphaEdge" parent="World/Colony/Connections"]
+position = Vector2(0, 0)
+
+[node name="FirstCarcass" parent="World/Remains"]
+position = Vector2(250, 335)
+total_nutrition = 80
+batch_size = 10
+
+[node name="SecondCarcass" parent="World/Remains"]
+position = Vector2(1005, 330)
+total_nutrition = 120
+batch_size = 10
+
+[node name="East" parent="World/SpawnPoints"]
+position = Vector2(600, 280)
+
+[node name="EntryLabel" type="Label" parent="World/SpawnPoints/East"]
+offset_left = -78.0
+offset_top = -22.0
+offset_right = 78.0
+offset_bottom = 0.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_map")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.96, 0.75, 0.46, 1)
+text = "前方入口 ↓"
+horizontal_alignment = 1
+
+[node name="West" parent="World/SpawnPoints"]
+position = Vector2(1130, 330)
+
+[node name="EntryLabel" type="Label" parent="World/SpawnPoints/West"]
+offset_left = -120.0
+offset_top = -28.0
+offset_right = 38.0
+offset_bottom = -6.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_map")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.96, 0.66, 0.42, 1)
+text = "侧前入口 ↙"
+horizontal_alignment = 2
+
+[node name="Frontier" parent="World/SpawnPoints"]
+visible = false
+position = Vector2(1130, 330)
+process_mode = 4
+
+[node name="FirstResourceGuide" parent="World"]
+z_index = 6
+position = Vector2(330, 395)
+
+[node name="Hint" parent="World/FirstResourceGuide"]
+offset_left = -232.0
+offset_top = 112.0
+offset_right = 108.0
+offset_bottom = 176.0
+theme_override_fonts/font = SubResource("Font_map")
+text = "① 左前尸骸80 · 先向十字伸展\n接通后每批回运10"
+
+[node name="SecondResourceGuide" parent="World"]
+z_index = 6
+position = Vector2(925, 390)
+
+[node name="Hint" parent="World/SecondResourceGuide"]
+offset_left = -85.0
+offset_top = 162.0
+offset_right = 259.0
+offset_bottom = 226.0
+theme_override_fonts/font = SubResource("Font_map")
+text = "② 右前尸骸120 · 留意侧入口\n向十字伸展，保护回运路线"
+
+[node name="TerrainNavigation" parent="World"]
+bounds = Rect2(16, 258, 1168, 362)
+obstacles = Array[Rect2]([Rect2(535, 308, 130, 104), Rect2(220, 424, 76, 80), Rect2(865, 476, 76, 90)])
+
+[node name="BypassLabel" type="Label" parent="World"]
+z_index = 6
+offset_left = 390.0
+offset_top = 425.0
+offset_right = 815.0
+offset_bottom = 447.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_map")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.69, 0.83, 0.76, 1)
+text = "两处接通后，L连接菌结形成旁路"
+horizontal_alignment = 1
+
+[node name="GrowthInputController" parent="Systems"]
+placement_bounds = Rect2(16, 258, 1168, 362)
+
+[node name="CultivationInputController" parent="Systems"]
+placement_bounds = Rect2(16, 258, 1168, 362)
+
+[node name="ConnectionInputController" parent="Systems"]
+placement_bounds = Rect2(16, 258, 1168, 362)
+
+[node name="RepairInputController" parent="Systems"]
+placement_bounds = Rect2(16, 258, 1168, 362)

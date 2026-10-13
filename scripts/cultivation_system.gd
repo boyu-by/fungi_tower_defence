@@ -6,10 +6,12 @@ signal task_changed(snapshot: Dictionary)
 signal task_cancelled(task_id: int)
 signal task_completed(task_id: int)
 signal organ_matured(task_id: int, host: HyphaNode, organ: AttackOrgan, weapon: SporeWeapon)
+signal digestive_matured(task_id: int, host: HyphaNode, organ: DigestiveOrgan)
 
 const TOTAL_COST: int = 12
 const STRUCTURE_COST: int = 8
 const STARTUP_COST: int = 4
+const DIGESTIVE_TOTAL_COST: int = 8
 const MINIMUM_EFFECTIVE_TIME: float = 3.0
 const STAGE_TIME: float = MINIMUM_EFFECTIVE_TIME / float(STRUCTURE_COST)
 const MAX_TASK_ID: int = 9223372036854775807
@@ -21,6 +23,11 @@ const SUPPLY_WAIT_REASONS: Array[StringName] = [
 class BudRecord:
 	extends RefCounted
 
+	var organ_kind: StringName = &"attack"
+	var total_cost: int = 12
+	var structure_cost: int = 8
+	var startup_cost: int = 4
+	var minimum_time: float = 3.0
 	var bud_id: String = ""
 	var bud: OrganBud = null
 	var host: HyphaNode = null
@@ -45,8 +52,10 @@ class BudRecord:
 @export var projectile_container: Node2D
 @export var bud_scene: PackedScene = preload("res://scenes/colony/organ_bud.tscn")
 @export var attack_organ_scene: PackedScene = preload("res://scenes/colony/attack_organ.tscn")
+@export var digestive_organ_scene: PackedScene = preload("res://scenes/colony/digestive_organ.tscn")
 @export var weapon_scene: PackedScene = preload("res://scenes/combat/spore_weapon.tscn")
 @export var weapon_attack_range: float = 100.0
+@export var normal_weapon_profile: WeaponProfile
 
 var _last_task_id: int = 0
 var _last_bud_id: int = 0
@@ -95,7 +104,23 @@ func _on_owned_node_tree_exiting(bud_id: String) -> void:
 		_cancel_current(true)
 
 
-func get_cultivation_availability(host: HyphaNode) -> StringName:
+static func get_recipe(organ_kind: StringName) -> Dictionary:
+	if organ_kind == &"digestive":
+		return {
+			"organ_kind": &"digestive", "total_cost": DIGESTIVE_TOTAL_COST,
+			"structure_cost": STRUCTURE_COST, "startup_cost": 0,
+			"minimum_time": MINIMUM_EFFECTIVE_TIME,
+		}
+	if organ_kind == &"attack" or organ_kind == &"":
+		return {
+			"organ_kind": &"attack", "total_cost": TOTAL_COST,
+			"structure_cost": STRUCTURE_COST, "startup_cost": STARTUP_COST,
+			"minimum_time": MINIMUM_EFFECTIVE_TIME,
+		}
+	return {}
+
+
+func get_cultivation_availability(host: HyphaNode, organ_kind: StringName = &"") -> StringName:
 	if not _node_is_available(host):
 		return &"no_selection"
 	if has_active_task() or (_node_is_available(growth_system) and growth_system.has_active_task()):
@@ -107,9 +132,11 @@ func get_cultivation_availability(host: HyphaNode) -> StringName:
 		return &"occupied"
 	if _has_pending_settlement():
 		return &"settlement_pending"
-	if _last_task_id == MAX_TASK_ID or not _configuration_is_valid():
+	# 已有芽的继续请求只能使用当初冻结的配方，宿主重建标记不再影响它。
+	var resolved_kind: StringName = record.organ_kind if record != null else _resolve_kind(host, organ_kind)
+	if _last_task_id == MAX_TASK_ID or not _configuration_is_valid(resolved_kind):
 		return &"invalid_configuration"
-	if not network_system.is_connected_to_core(host):
+	if not network_system.is_work_connected_to_core(host):
 		return &"disconnected"
 	# 网络查询可能注销失效节点并同步进入本系统，故再核对占位和建造请求。
 	if not _node_is_available(host):
@@ -121,14 +148,16 @@ func get_cultivation_availability(host: HyphaNode) -> StringName:
 	return &"ready" if host.is_organ_slot_available() else &"occupied"
 
 
-func start_cultivation(host: HyphaNode) -> int:
-	if _transitioning or _resetting or _advancing or _emitting_changed:
+func start_cultivation(host: HyphaNode, organ_kind: StringName = &"") -> int:
+	if _transitioning or _resetting or _advancing or _emitting_changed or not _node_is_available(host):
 		return 0
 	_transitioning = true
-	var availability: StringName = get_cultivation_availability(host)
+	var admitted_kind: StringName = _resolve_kind(host, organ_kind)
+	var availability: StringName = get_cultivation_availability(host, admitted_kind)
 	if availability != &"ready":
 		_transitioning = false
 		return 0
+	var recipe: Dictionary = get_recipe(admitted_kind)
 	var instance: Node = bud_scene.instantiate()
 	if not instance is OrganBud:
 		_discard_node(instance)
@@ -153,6 +182,11 @@ func start_cultivation(host: HyphaNode) -> int:
 	record.bud_id = "bud:%d:%d" % [get_instance_id(), _last_bud_id]
 	record.bud = new_bud
 	record.host = host
+	record.organ_kind = StringName(recipe["organ_kind"])
+	record.total_cost = int(recipe["total_cost"])
+	record.structure_cost = int(recipe["structure_cost"])
+	record.startup_cost = int(recipe["startup_cost"])
+	record.minimum_time = float(recipe["minimum_time"])
 	record.task_id = _last_task_id
 	_buds[record.bud_id] = record
 	_task_bud_ids[record.task_id] = record.bud_id
@@ -276,6 +310,13 @@ func get_total_structure_consumed() -> int:
 	return int(get_resource_snapshot()["structure_consumed"])
 
 
+func get_startup_transferred_nutrition() -> int:
+	var transferred: int = 0
+	for record: BudRecord in _buds.values():
+		transferred += record.startup_transferred
+	return transferred
+
+
 func get_delivery_target(task_id: int) -> HyphaNode:
 	if task_id != _task_id or not has_active_task() or not _record_nodes_are_available(_current):
 		return null
@@ -345,7 +386,7 @@ func advance(delta: float) -> void:
 		if not _can_advance(advancing_task_id):
 			break
 		var record: BudRecord = _current
-		if record.structure_consumed < STRUCTURE_COST or record.stage_paid:
+		if record.structure_consumed < record.structure_cost or record.stage_paid:
 			if not record.stage_paid:
 				if remaining_time <= 0.0 or record.buffered_nutrition < 1:
 					break
@@ -357,26 +398,27 @@ func advance(delta: float) -> void:
 				_publish_changed()
 			if not _can_advance(advancing_task_id) or remaining_time <= 0.0:
 				break
-			var elapsed: float = minf(STAGE_TIME - record.stage_elapsed, remaining_time)
+			var stage_time: float = record.minimum_time / float(record.structure_cost)
+			var elapsed: float = minf(stage_time - record.stage_elapsed, remaining_time)
 			record.stage_elapsed += elapsed
-			record.effective_time = minf(MINIMUM_EFFECTIVE_TIME, record.effective_time + elapsed)
+			record.effective_time = minf(record.minimum_time, record.effective_time + elapsed)
 			remaining_time = maxf(0.0, remaining_time - elapsed)
-			if record.stage_elapsed >= STAGE_TIME:
+			if record.stage_elapsed >= stage_time:
 				record.stage_paid = false
 				record.stage_elapsed = 0.0
-				if record.structure_consumed == STRUCTURE_COST:
-					record.effective_time = MINIMUM_EFFECTIVE_TIME
+				if record.structure_consumed == record.structure_cost:
+					record.effective_time = record.minimum_time
 			_refresh_current_state()
 			_publish_changed()
 		else:
-			var reserve: int = mini(STARTUP_COST - record.startup_reserved, record.buffered_nutrition)
+			var reserve: int = mini(record.startup_cost - record.startup_reserved, record.buffered_nutrition)
 			if reserve > 0:
 				record.buffered_nutrition -= reserve
 				record.startup_reserved += reserve
 				_refresh_current_state()
 				_publish_changed()
-			if _can_advance(advancing_task_id) and record.startup_reserved == STARTUP_COST \
-					and record.effective_time >= MINIMUM_EFFECTIVE_TIME:
+			if _can_advance(advancing_task_id) and record.startup_reserved == record.startup_cost \
+					and record.effective_time >= record.minimum_time:
 				_mature_current(record)
 			break
 	_advancing = false
@@ -420,9 +462,12 @@ func _cancel_current(force: bool) -> bool:
 
 
 func _mature_current(record: BudRecord) -> void:
-	if record != _current or not has_active_task() or record.startup_reserved != STARTUP_COST \
-			or record.structure_consumed != STRUCTURE_COST or record.stage_paid \
-			or record.effective_time < MINIMUM_EFFECTIVE_TIME:
+	if record != _current or not has_active_task() or record.startup_reserved != record.startup_cost \
+			or record.structure_consumed != record.structure_cost or record.stage_paid \
+			or record.effective_time < record.minimum_time or not _configuration_is_valid(record.organ_kind):
+		return
+	if record.organ_kind == &"digestive":
+		_mature_digestive(record)
 		return
 	_transitioning = true
 	var organ_instance: Node = attack_organ_scene.instantiate()
@@ -449,7 +494,7 @@ func _mature_current(record: BudRecord) -> void:
 		_publish_changed()
 		return
 	if not _record_nodes_are_available(record) or not has_active_task() \
-			or not _node_is_available(network_system) or not network_system.is_connected_to_core(record.host):
+			or not _node_is_available(network_system) or not network_system.is_work_connected_to_core(record.host):
 		if is_instance_valid(record.host):
 			record.host.release_organ_slot(reservation_id)
 		_discard_node(organ)
@@ -464,14 +509,17 @@ func _mature_current(record: BudRecord) -> void:
 	organ.process_mode = Node.PROCESS_MODE_DISABLED
 	weapon.process_mode = Node.PROCESS_MODE_DISABLED
 	# _ready 读取的就是这笔已付费分配；没有额外赠送的默认库存。
-	organ.initial_nutrition = STARTUP_COST
-	organ.nutrition = STARTUP_COST
+	organ.initial_nutrition = record.startup_cost
+	organ.nutrition = record.startup_cost
 	organ.incoming_nutrition = 0
 	weapon.inventory_owner = organ
 	weapon.enemy_container = enemy_container
 	weapon.projectile_container = projectile_container
 	weapon.position = Vector2(0.0, -28.0)
-	weapon.attack_range = weapon_attack_range
+	if normal_weapon_profile != null:
+		weapon.configure_profile(normal_weapon_profile)
+	else:
+		weapon.attack_range = weapon_attack_range
 	_materializing = record
 	_materialization_invalid = false
 	# 四点营养暂由禁用的草稿器官持有，消费历史仍为八点结构。
@@ -485,7 +533,7 @@ func _mature_current(record: BudRecord) -> void:
 	var committed: bool = _node_is_available(host) and _node_is_available(organ) \
 		and _node_is_available(weapon) and weapon.get_parent() == host \
 		and not _materialization_invalid \
-		and _node_is_available(network_system) and network_system.is_connected_to_core(host) \
+		and _node_is_available(network_system) and network_system.is_work_connected_to_core(host) \
 		and host.commit_organ_slot(reservation_id, organ)
 	committed = committed and not _materialization_invalid and _node_is_available(host) \
 		and _node_is_available(organ) and organ.get_parent() == host \
@@ -495,7 +543,7 @@ func _mature_current(record: BudRecord) -> void:
 		_discard_node(organ)
 		_discard_node(weapon)
 		record.startup_transferred = 0
-		record.startup_reserved = STARTUP_COST
+		record.startup_reserved = record.startup_cost
 		record.state = &"waiting"
 		_materializing = null
 		_materialization_invalid = false
@@ -507,9 +555,12 @@ func _mature_current(record: BudRecord) -> void:
 		_publish_changed()
 		return
 
+	organ.set_meta("cultivation_committed", true)
+	if host.has_meta("rebuild_digestive"):
+		host.remove_meta("rebuild_digestive")
 	var matured_task_id: int = record.task_id
 	var old_bud: OrganBud = record.bud
-	record.startup_transferred = STARTUP_COST
+	record.startup_transferred = record.startup_cost
 	record.state = &"completed"
 	record.wait_reason = &""
 	record.supply_wait_reason = &""
@@ -538,10 +589,10 @@ func _refresh_current_state() -> bool:
 	if not _record_nodes_are_available(record):
 		_refreshing = false
 		return _cancel_current(true)
-	var configured: bool = _configuration_is_valid()
+	var configured: bool = _configuration_is_valid(record.organ_kind)
 	var connected: bool = false
 	if configured and record.state != &"paused":
-		connected = network_system.is_connected_to_core(record.host)
+		connected = network_system.is_work_connected_to_core(record.host)
 	if _current != record or _task_id != checked_task_id or not has_active_task():
 		_refreshing = false
 		return false
@@ -562,9 +613,9 @@ func _refresh_current_state() -> bool:
 	elif not owns_slot:
 		record.state = &"waiting"
 		record.wait_reason = &"occupied"
-	elif record.stage_paid or (record.structure_consumed < STRUCTURE_COST and record.buffered_nutrition > 0) \
-			or (record.structure_consumed == STRUCTURE_COST \
-				and record.buffered_nutrition + record.startup_reserved >= STARTUP_COST):
+	elif record.stage_paid or (record.structure_consumed < record.structure_cost and record.buffered_nutrition > 0) \
+			or (record.structure_consumed == record.structure_cost \
+				and record.buffered_nutrition + record.startup_reserved >= record.startup_cost):
 		record.state = &"cultivating"
 		record.wait_reason = &""
 	else:
@@ -593,7 +644,7 @@ func _requested_for(record: BudRecord) -> int:
 
 
 func _unfunded_nutrition(record: BudRecord) -> int:
-	return maxi(0, TOTAL_COST - record.structure_consumed - record.buffered_nutrition \
+	return maxi(0, record.total_cost - record.structure_consumed - record.buffered_nutrition \
 		- record.startup_reserved - record.startup_transferred)
 
 
@@ -609,19 +660,22 @@ func _snapshot_for(record: BudRecord) -> Dictionary:
 	return {
 		"task_id": record.task_id,
 		"bud_id": record.bud_id,
+		"organ_kind": record.organ_kind,
 		"host": record.host if _node_is_available(record.host) else null,
 		"state": record.state,
 		"wait_reason": record.wait_reason,
-		"progress": clampf(record.effective_time / MINIMUM_EFFECTIVE_TIME, 0.0, 1.0),
+		"progress": clampf(record.effective_time / record.minimum_time, 0.0, 1.0),
 		"effective_time": record.effective_time,
-		"minimum_time": MINIMUM_EFFECTIVE_TIME,
-		"total_cost": TOTAL_COST,
+		"minimum_time": record.minimum_time,
+		"total_cost": record.total_cost,
+		"structure_cost": record.structure_cost,
+		"startup_cost": record.startup_cost,
 		"structure_consumed": record.structure_consumed,
 		"buffered_nutrition": record.buffered_nutrition,
 		"startup_reserved": record.startup_reserved,
 		"startup_transferred": record.startup_transferred,
 		"consumed_nutrition": consumed,
-		"remaining_cost": TOTAL_COST - consumed,
+		"remaining_cost": record.total_cost - consumed,
 		"requested_nutrition": _requested_for(record),
 	}
 
@@ -647,7 +701,7 @@ func _find_owned_bud(host: HyphaNode) -> BudRecord:
 
 func _record_nodes_are_available(record: BudRecord) -> bool:
 	return record != null and _node_is_available(record.host) and _node_is_available(record.bud) \
-		and record.bud.get_parent() == record.host
+		and record.bud.get_parent() == record.host and record.bud.is_attackable()
 
 
 func _slot_contains_only_bud(record: BudRecord) -> bool:
@@ -668,12 +722,28 @@ func _has_pending_settlement() -> bool:
 	return false
 
 
-func _configuration_is_valid() -> bool:
+func _resolve_kind(host: HyphaNode, organ_kind: StringName) -> StringName:
+	if organ_kind != &"":
+		return organ_kind
+	return &"digestive" if bool(host.get_meta("rebuild_digestive", false)) else &"attack"
+
+
+func _configuration_is_valid(organ_kind: StringName = &"attack") -> bool:
 	_bind_network()
-	return _node_is_available(network_system) and _node_is_available(enemy_container) \
-		and _node_is_available(projectile_container) and is_finite(weapon_attack_range) \
-		and weapon_attack_range > 0.0 and _scene_is_valid(bud_scene, &"bud") \
+	if not _node_is_available(network_system) or not _scene_is_valid(bud_scene, &"bud"):
+		return false
+	if organ_kind == &"digestive":
+		return _scene_is_valid(digestive_organ_scene, &"digestive")
+	return organ_kind == &"attack" and _node_is_available(enemy_container) \
+		and _node_is_available(projectile_container) and _weapon_configuration_is_valid() \
 		and _scene_is_valid(attack_organ_scene, &"attack") and _scene_is_valid(weapon_scene, &"weapon")
+
+
+func _weapon_configuration_is_valid() -> bool:
+	if normal_weapon_profile != null:
+		return normal_weapon_profile.is_valid() \
+			and normal_weapon_profile.damage_type == WeaponProfile.DamageType.NORMAL
+	return is_finite(weapon_attack_range) and weapon_attack_range > 0.0
 
 
 func _scene_is_valid(scene: PackedScene, kind: StringName) -> bool:
@@ -691,6 +761,10 @@ func _scene_is_valid(scene: PackedScene, kind: StringName) -> bool:
 			valid = _attack_instance_is_valid(instance)
 		&"weapon":
 			valid = _weapon_instance_is_valid(instance)
+		&"digestive":
+			valid = instance is DigestiveOrgan and instance.get_node_or_null("DigestTimer") is Timer \
+				and instance.get_node_or_null("SecondDigestTimer") is Timer \
+				and instance.get_node_or_null("ChamberExpansionTimer") is Timer
 	_discard_node(instance)
 	_scene_validations[kind] = {"scene": scene, "valid": valid}
 	return valid
@@ -756,3 +830,94 @@ func _publish_changed() -> void:
 		_changed_pending = false
 		task_changed.emit(get_task_snapshot())
 	_emitting_changed = false
+
+
+## 死亡不能沿用可继续的旧芽；未消费缓存由既有供养账本结算一次。
+func abort_destroyed_bud(bud: OrganBud) -> bool:
+	if not is_instance_valid(bud):
+		return false
+	var matched: bool = false
+	for record: BudRecord in _buds.values():
+		if record.bud != bud:
+			continue
+		matched = true
+		if record == _materializing:
+			_materialization_invalid = true
+		if record == _current and has_active_task():
+			_cancel_current(true)
+		_disconnect_record(record)
+		record.bud = null
+		_sync_record(record)
+	return matched
+
+
+## 新建与重建共用已付费的八份结构和三秒时钟；胃囊无启动库存。
+func _mature_digestive(record: BudRecord) -> void:
+	if record != _current or not has_active_task() or not _record_nodes_are_available(record) \
+			or not record.host.is_functional():
+		return
+	_transitioning = true
+	var host: HyphaNode = record.host
+	var reservation_id: String = _new_reservation_id()
+	if not host.try_reserve_organ_slot(reservation_id, record.bud):
+		_transitioning = false
+		return
+	if not _record_nodes_are_available(record) or not has_active_task() \
+			or not _node_is_available(network_system) or not network_system.is_work_connected_to_core(host):
+		if is_instance_valid(host):
+			host.release_organ_slot(reservation_id)
+		_transitioning = false
+		_refresh_current_state()
+		_publish_changed()
+		return
+	var instance: Node = digestive_organ_scene.instantiate()
+	if not instance is DigestiveOrgan:
+		_scene_validations.erase(&"digestive")
+		_discard_node(instance)
+		if is_instance_valid(host):
+			host.release_organ_slot(reservation_id)
+		_transitioning = false
+		_refresh_current_state()
+		_publish_changed()
+		return
+	var organ: DigestiveOrgan = instance as DigestiveOrgan
+	organ.name = "DigestiveOrgan"
+	organ.mother_core = network_system.peek_registered_core() as MotherCore
+	var previous_mode: Node.ProcessMode = organ.process_mode
+	organ.process_mode = Node.PROCESS_MODE_DISABLED
+	_materializing = record
+	_materialization_invalid = false
+	host.add_child(organ)
+	var committed: bool = not _materialization_invalid and _record_nodes_are_available(record) \
+		and _node_is_available(organ) and organ.is_attackable() and host.is_functional() \
+		and _node_is_available(network_system) and network_system.is_work_connected_to_core(host) \
+		and host.commit_organ_slot(reservation_id, organ)
+	committed = committed and not _materialization_invalid and _node_is_available(host) \
+		and _node_is_available(organ) and organ.get_parent() == host and organ.is_functional()
+	_materializing = null
+	_materialization_invalid = false
+	if not committed:
+		_discard_node(organ)
+		if is_instance_valid(host):
+			host.release_organ_slot(reservation_id)
+		_transitioning = false
+		_refresh_current_state()
+		_publish_changed()
+		return
+	var completed_id: int = record.task_id
+	var old_bud: OrganBud = record.bud
+	organ.set_meta("cultivation_committed", true)
+	record.state = &"completed"
+	record.wait_reason = &""
+	record.supply_wait_reason = &""
+	_disconnect_record(record)
+	record.bud = null
+	_discard_node(old_bud)
+	if host.has_meta("rebuild_digestive"):
+		host.remove_meta("rebuild_digestive")
+	organ.process_mode = previous_mode
+	_sync_record(record)
+	_transitioning = false
+	_publish_changed()
+	digestive_matured.emit(completed_id, host, organ)
+	task_completed.emit(completed_id)

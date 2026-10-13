@@ -286,12 +286,14 @@ func _coordinator_finish(
 	return true
 
 
-func _find_duplicate(kind: StringName, parameters: Dictionary) -> String:
+func _find_duplicate(kind: StringName, parameters: Dictionary, excluding_id: String = "") -> String:
 	if not _parameters_have_shape(kind, parameters):
 		return ""
 	for construction_id: String in _entry_ids:
 		var request: Dictionary = _requests[construction_id]
-		if request["kind"] != kind:
+		if construction_id == excluding_id:
+			continue
+		if request["kind"] != kind and not (kind in [&"growth", &"remote_cultivation"] and request["kind"] in [&"growth", &"remote_cultivation"]):
 			continue
 		var saved: Dictionary = request["parameters"]
 		if kind == &"connection":
@@ -300,7 +302,7 @@ func _find_duplicate(kind: StringName, parameters: Dictionary) -> String:
 					or (saved["first_node"] == parameters["second_node"] \
 					and saved["second_node"] == parameters["first_node"]):
 				return construction_id
-		elif saved["start_node"] == parameters["start_node"]:
+		elif kind in [&"growth", &"remote_cultivation"]:
 			var saved_position: Vector2 = saved["target_position"]
 			if saved_position.distance_to(parameters["target_position"]) <= 1.0:
 				return construction_id
@@ -380,7 +382,7 @@ func _coordinator_release_tip(construction_id: String, generation: int,
 	return generation == _generation and _maturing_ids.has(construction_id)
 
 
-func _coordinator_enqueue_cultivation(host: HyphaNode, payer: MotherCore) -> Dictionary:
+func _coordinator_enqueue_cultivation(host: HyphaNode, payer: MotherCore, organ_kind: StringName = &"attack") -> Dictionary:
 	if not multi_execution or not _node_is_available(host) or not _node_is_available(payer):
 		return _enqueue_result(false, "", &"invalid_configuration")
 	for request: Dictionary in get_active_requests():
@@ -393,7 +395,7 @@ func _coordinator_enqueue_cultivation(host: HyphaNode, payer: MotherCore) -> Dic
 	var construction_id: String = "construction:%d:%d" % [get_instance_id(), _serial]
 	_requests[construction_id] = {
 		"construction_id": construction_id, "sequence": _serial, "kind": &"cultivation",
-		"parameters": {"host": host}, "payer": payer, "payer_id": payer.get_instance_id(),
+		"parameters": {"host": host, "organ_kind": organ_kind}, "payer": payer, "payer_id": payer.get_instance_id(),
 		"state": &"waiting", "wait_reason": &"queued", "started": false,
 		"internal_ids": _empty_internal_ids(), "detail": {}, "worker_id": 0,
 		"phase": &"maturing", "occupies_external_slot": false, "occupies_tip_slot": false,
@@ -436,3 +438,17 @@ func _publish_changed() -> void:
 		_changed_pending = false
 		changed.emit(get_snapshot())
 	_emitting_changed = false
+
+
+## 只由协调器在有效重规划后提交；编号、付款人、队列顺序与执行身份不变。
+func _coordinator_retarget(construction_id: String, generation: int, position: Vector2, detail: Dictionary) -> bool:
+	if generation != _generation or not _requests.has(construction_id):
+		return false
+	var request: Dictionary = _requests[construction_id]
+	if request["kind"] not in [&"growth", &"remote_cultivation"] or request["state"] in TERMINAL_STATES:
+		return false
+	request["parameters"]["target_position"] = position
+	request["parameters"]["plan_version"] = int(detail.get("plan_version", int(request["parameters"].get("plan_version", 1)) + 1))
+	request["detail"] = detail.duplicate(true)
+	_publish_changed()
+	return generation == _generation and _requests.has(construction_id)

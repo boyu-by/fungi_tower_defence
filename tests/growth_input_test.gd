@@ -234,8 +234,16 @@ func _test_preview_and_connected_start() -> void:
 		var preview: Dictionary = controller.preview_at(point)
 		_check(bool(preview["valid"]), "Preview accepts a new point without checking funds")
 		var plan: Dictionary = preview["plan"]
-		_check(plan == planner.plan(front.global_position, point, false),
-			"Preview uses the shared straight-line planner and charges a new endpoint")
+		var expected: Dictionary = planner.plan(front.global_position, point, false)
+		# Stage10 adds explicit topology identity to each otherwise unchanged segment.
+		for segment_index: int in range(expected["segments"].size()):
+			expected["segments"][segment_index]["is_branch"] = false
+			expected["segments"][segment_index]["main_segment_index"] = segment_index
+		var geometry_matches: bool = true
+		for key: Variant in expected:
+			geometry_matches = geometry_matches and plan.get(key) == expected[key]
+		_check(geometry_matches and plan.get("join_node") == null and plan.get("effective_point") == point,
+			"Preview preserves straight-line geometry, endpoint charge and explicit unsnapped target")
 	var marker: GrowthTarget = _markers(fixture, true)[0]
 	_check(marker.status_label.text.contains("预计营养"), "Preview displays planned nutrition cost")
 	var screen_rect: Rect2 = marker.get_global_transform_with_canvas() * Rect2(

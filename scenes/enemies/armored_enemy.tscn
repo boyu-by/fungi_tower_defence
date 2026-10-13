@@ -1,0 +1,61 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="1_base"]
+
+[node name="ArmoredEnemy" instance=ExtResource("1_base")]
+archetype = 2
+max_health = 72
+armor = 4
+move_speed = 26.0
+attack_damage = 15
+remains_nutrition = 4
+
+[node name="Shadow" parent="Visuals" index="0"]
+polygon = PackedVector2Array(-23, 0, -16, -7, 16, -7, 23, 0, 16, 7, -16, 7)
+
+[node name="Sprite" parent="Visuals" index="1"]
+position = Vector2(0, -30)
+scale = Vector2(2.3, 2.3)
+modulate = Color(0.78, 0.88, 0.98, 1)
+
+[node name="ArmorOutline" type="Polygon2D" parent="Visuals"]
+z_index = -1
+position = Vector2(0, -31)
+color = Color(0.17, 0.23, 0.28, 1)
+polygon = PackedVector2Array(-26, -24, -15, -32, 15, -32, 26, -24, 28, -2, 19, 25, -19, 25, -28, -2)
+
+[node name="ArmorRim" type="Line2D" parent="Visuals"]
+position = Vector2(0, -31)
+points = PackedVector2Array(-26, -24, -15, -32, 15, -32, 26, -24, 28, -2, 19, 25, -19, 25, -28, -2)
+width = 5.0
+default_color = Color(0.43, 0.57, 0.65, 1)
+closed = true
+joint_mode = 2
+antialiased = true
+
+[node name="ArmorHint" type="Node2D" parent="Visuals"]
+position = Vector2(26, -57)
+
+[node name="Shield" type="Polygon2D" parent="Visuals/ArmorHint"]
+color = Color(0.35, 0.57, 0.73, 1)
+polygon = PackedVector2Array(-8, -8, 8, -8, 8, 2, 0, 10, -8, 2)
+
+[node name="Value" type="Label" parent="Visuals/ArmorHint"]
+offset_left = -8.0
+offset_top = -9.0
+offset_right = 8.0
+offset_bottom = 9.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.97, 1, 1, 1)
+theme_override_font_sizes/font_size = 12
+text = "4"
+horizontal_alignment = 1
+
+[node name="HealthBar" parent="." index="1"]
+offset_left = -26.0
+offset_top = -76.0
+offset_right = 26.0
+offset_bottom = -72.0
+
+[node name="AttackTimer" parent="." index="2"]
+wait_time = 1.0

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="WeaponProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/weapon_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+damage = 6
+fire_interval = 0.9
+attack_range = 145.0
+nutrition_cost = 1
+max_targets = 3
+spread_angle_degrees = 60.0
+damage_type = 2

@@ -1,9 +1,14 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/colony_hud.gd" id="1_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/differentiation_panel.tscn" id="2_differentiation_panel"]
 
 [sub_resource type="SystemFont" id="SystemFont_ui"]
 font_names = PackedStringArray("Hiragino Sans GB", "Heiti SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Arial Unicode MS")
+
+[sub_resource type="Theme" id="Theme_differentiation"]
+default_font = SubResource("SystemFont_ui")
+default_font_size = 13
 
 [node name="ColonyHUD" type="CanvasLayer"]
 script = ExtResource("1_hud")
@@ -17,7 +22,7 @@ mouse_filter = 2
 theme_override_colors/font_color = Color(0.82, 0.89, 0.83, 1)
 theme_override_fonts/font = SubResource("SystemFont_ui")
 theme_override_font_sizes/font_size = 16
-text = "左键选择 · G 伸展 · B 种芽 · C 培育 · L 连接 · P 暂停/恢复 · X 取消 · N 供养 · E 消耗 · R 重开 · F6 断路验证"
+text = "左键选择 · G 伸展 · B 种芽 · C 培育 · L 连接 · P 暂停/续 · X 取消 · R 重开 · F5 原演示 · F6 断路 · F7 成长 · F8 战斗分工 · F9 地形危机"
 
 [node name="RepairHelp" type="Label" parent="."]
 offset_left = 24.0
@@ -28,7 +33,7 @@ mouse_filter = 2
 theme_override_fonts/font = SubResource("SystemFont_ui")
 theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.83, 0.82, 0.59, 1)
-text = "F 选菌丝 · J 修复 · K 暂停/继续 · Backspace 取消修复（P/X 仍控制建设）"
+text = "F 选组织/菌丝 · J 修复 · K 暂停/继续 · Backspace 取消修复（P/X 仍控制建设）"
 
 [node name="StageLabel" type="Label" parent="."]
 offset_left = 24.0
@@ -44,9 +49,9 @@ clip_text = true
 
 [node name="RepairPanel" type="Control" parent="."]
 offset_left = 800.0
-offset_top = 234.0
+offset_top = 228.0
 offset_right = 1176.0
-offset_bottom = 354.0
+offset_bottom = 348.0
 mouse_filter = 0
 
 [node name="Background" type="ColorRect" parent="RepairPanel"]
@@ -300,3 +305,146 @@ theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.80, 0.85, 0.92, 1)
 text = "通行占用 0/8 · 节点等待 0 包\n菌丝空闲 · 每条默认容量 2（双向共用）\n等待：黄 0 · 绿 0 · 紫 0（紫包占 2）"
 clip_text = true
+
+[node name="ProgressionHintPanel" type="Control" parent="."]
+visible = false
+offset_left = 24.0
+offset_top = 264.0
+offset_right = 780.0
+offset_bottom = 320.0
+mouse_filter = 0
+
+[node name="Background" type="ColorRect" parent="ProgressionHintPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.045, 0.10, 0.07, 0.95)
+
+[node name="Message" type="Label" parent="ProgressionHintPanel"]
+offset_left = 12.0
+offset_top = 6.0
+offset_right = 620.0
+offset_bottom = 50.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.77, 0.94, 0.78, 1)
+text = "成长提示已开启 · 新进展出现时会在这里提示。"
+autowrap_mode = 3
+vertical_alignment = 1
+
+[node name="Dismiss" type="Button" parent="ProgressionHintPanel"]
+offset_left = 636.0
+offset_top = 4.0
+offset_right = 746.0
+offset_bottom = 28.0
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "知道了"
+disabled = true
+
+[node name="Toggle" type="Button" parent="ProgressionHintPanel"]
+offset_left = 636.0
+offset_top = 29.0
+offset_right = 746.0
+offset_bottom = 53.0
+focus_mode = 0
+theme_override_fonts/font = SubResource("SystemFont_ui")
+theme_override_font_sizes/font_size = 14
+text = "关闭引导"
+
+[node name="DifferentiationPanel" parent="." instance=ExtResource("2_differentiation_panel")]
+theme = SubResource("Theme_differentiation")
+offset_left = 802.0
+offset_top = 348.0
+offset_right = 1176.0
+offset_bottom = 642.0
+
+[node name="CombatDemoPanel" type="Control" parent="."]
+visible = false
+offset_left = 800.0
+offset_top = 136.0
+offset_right = 1176.0
+offset_bottom = 226.0
+mouse_filter = 0
+theme = SubResource("Theme_differentiation")
+
+[node name="Background" type="ColorRect" parent="CombatDemoPanel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.045, 0.08, 0.06, 0.96)
+
+[node name="Status" type="Label" parent="CombatDemoPanel"]
+offset_left = 8.0
+offset_top = 2.0
+offset_right = 368.0
+offset_bottom = 21.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 12
+text = "先回收到160，再准备火力并手动开始"
+clip_text = true
+
+[node name="NormalButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 8.0
+offset_top = 24.0
+offset_right = 91.0
+offset_bottom = 49.0
+focus_mode = 0
+toggle_mode = true
+text = "普通 ×6"
+tooltip_text = "普通敌人左右轮换；一次有限验证批次"
+
+[node name="SwarmButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 97.0
+offset_top = 24.0
+offset_right = 181.0
+offset_bottom = 49.0
+focus_mode = 0
+toggle_mode = true
+text = "小型·右"
+tooltip_text = "右翼进入3只小型敌人；推荐右翼散射"
+
+[node name="ArmoredButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 187.0
+offset_top = 24.0
+offset_right = 271.0
+offset_bottom = 49.0
+focus_mode = 0
+toggle_mode = true
+text = "重甲·左"
+tooltip_text = "左翼进入1只重甲敌人；推荐左翼破甲"
+
+[node name="MixedButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 277.0
+offset_top = 24.0
+offset_right = 368.0
+offset_bottom = 49.0
+focus_mode = 0
+toggle_mode = true
+text = "混合 ×6"
+tooltip_text = "2普通左右轮换，3小型从右，1重甲从左"
+
+[node name="StartButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 8.0
+offset_top = 55.0
+offset_right = 181.0
+offset_bottom = 81.0
+focus_mode = 0
+text = "开始所选批次"
+disabled = true
+
+[node name="StopButton" type="Button" parent="CombatDemoPanel"]
+offset_left = 187.0
+offset_top = 55.0
+offset_right = 368.0
+offset_bottom = 81.0
+focus_mode = 0
+text = "停止后续生成"
+tooltip_text = "仅停止尚未生成的敌人；已在场敌人继续战斗"
+disabled = true

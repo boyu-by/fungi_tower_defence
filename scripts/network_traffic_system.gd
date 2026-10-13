@@ -108,7 +108,7 @@ static func units_for_kind(cargo_kind: StringName) -> int:
 	match cargo_kind:
 		&"supply", &"return":
 			return 1
-		&"remains":
+		&"remains", &"transplant":
 			return 2
 		_:
 			return 0

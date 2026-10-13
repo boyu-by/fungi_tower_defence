@@ -358,7 +358,7 @@ func _test_preview_and_admission() -> void:
 	_check(bool(preview.get("valid", false)) and int(preview.get("network_cost", 0)) == 16
 		and int(preview.get("organ_cost", 0)) == 12 and int(preview.get("total_cost", 0)) == 28
 		and int(preview.get("remaining_cost", 0)) == 28, "320 px preview costs exactly 16 + 12")
-	_check(preview.get("plan") == fixture.growth.planner.plan(Vector2.ZERO, Vector2(320.0, 0.0), false),
+	_check(preview.get("plan") == fixture.growth.preview_target(fixture.core, Vector2(320.0, 0.0)),
 		"Preview uses the full existing growth plan without another endpoint fee")
 	_check(fixture.core.nutrition == 100 and _count_tips(fixture) == 0, "Preview creates no geometry or payment")
 	_check(not bool(fixture.remote.preview_request(fixture.core, Vector2(INF, 0.0)).get("valid", true)),

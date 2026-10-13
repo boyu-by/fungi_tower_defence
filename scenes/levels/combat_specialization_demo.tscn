@@ -1,0 +1,67 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/progression_demo.tscn" id="1_progression"]
+[ext_resource type="Script" path="res://scripts/combat_specialization_demo.gd" id="2_demo"]
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="3_entry"]
+[ext_resource type="Resource" path="res://resources/weapons/normal_spore.tres" id="4_normal_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="5_normal_enemy"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/swarm_enemy.tscn" id="6_swarm_enemy"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/armored_enemy.tscn" id="7_armored_enemy"]
+
+[sub_resource type="Resource" id="Entry_normal_six"]
+script = ExtResource("3_entry")
+enemy_scene = ExtResource("5_normal_enemy")
+group_count = 6
+group_size = 1
+group_interval = 3.0
+member_interval = 0.0
+member_spacing = 24.0
+spawn_point_index = -1
+
+[sub_resource type="Resource" id="Entry_normal_pair"]
+script = ExtResource("3_entry")
+enemy_scene = ExtResource("5_normal_enemy")
+group_count = 2
+group_size = 1
+group_interval = 3.0
+member_interval = 0.0
+member_spacing = 24.0
+spawn_point_index = -1
+
+[sub_resource type="Resource" id="Entry_swarm_right"]
+script = ExtResource("3_entry")
+enemy_scene = ExtResource("6_swarm_enemy")
+group_count = 1
+group_size = 3
+group_interval = 3.0
+member_interval = 0.12
+member_spacing = 24.0
+spawn_point_index = 0
+
+[sub_resource type="Resource" id="Entry_armored_left"]
+script = ExtResource("3_entry")
+enemy_scene = ExtResource("7_armored_enemy")
+group_count = 1
+group_size = 1
+group_interval = 3.0
+member_interval = 0.0
+member_spacing = 24.0
+spawn_point_index = 1
+
+[node name="CombatSpecializationDemo" instance=ExtResource("1_progression")]
+script = ExtResource("2_demo")
+normal_weapon_profile = ExtResource("4_normal_weapon")
+normal_batch_entries = Array[ExtResource("3_entry")]([SubResource("Entry_normal_six")])
+swarm_batch_entries = Array[ExtResource("3_entry")]([SubResource("Entry_swarm_right")])
+armored_batch_entries = Array[ExtResource("3_entry")]([SubResource("Entry_armored_left")])
+mixed_batch_entries = Array[ExtResource("3_entry")]([SubResource("Entry_normal_pair"), SubResource("Entry_swarm_right"), SubResource("Entry_armored_left")])
+
+[node name="SporeWeapon" parent="World/Colony/Nodes/HyphaNode" index="1"]
+weapon_profile = ExtResource("4_normal_weapon")
+
+[node name="SporeWeapon" parent="World/Colony/Nodes/RightNode" index="1"]
+weapon_profile = ExtResource("4_normal_weapon")
+
+[node name="EnemySpawner" parent="Systems" index="6"]
+auto_start = false
+spawn_entries = Array[ExtResource("3_entry")]([SubResource("Entry_normal_six")])

@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="FirstLevelWave" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/first_level_wave.gd" id="1_wave"]
+[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="scene_normal"]
+
+[sub_resource type="Resource" id="Entry_01"]
+script = ExtResource("2_entry")
+enemy_scene = ExtResource("scene_normal")
+group_count = 6
+group_size = 1
+group_interval = 6.0
+member_interval = 0.0
+member_spacing = 24.0
+spawn_point_index = 0
+
+[resource]
+script = ExtResource("1_wave")
+entries = Array[ExtResource("2_entry")]([SubResource("Entry_01")])
+title = "第一波 · 正面试探"
+direction_text = "敌人从正面入口来袭。"

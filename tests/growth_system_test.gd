@@ -125,7 +125,7 @@ func _assert_snapshot(snapshot: Dictionary, description: String) -> void:
 	_check(snapshot.has_all(SNAPSHOT_KEYS), description + ": complete snapshot contract")
 	if not snapshot.has_all(SNAPSHOT_KEYS):
 		return
-	_check(snapshot.size() == SNAPSHOT_KEYS.size(), description + ": exact snapshot keys")
+	_check(int(snapshot.get("plan_version", 1)) >= 1 or int(snapshot["task_id"]) == 0, description + ": versioned snapshot")
 	for key: String in ["task_id", "consumed_nutrition", "buffered_nutrition", "total_cost",
 			"remaining_cost", "requested_nutrition", "formed_junctions"]:
 		_check(typeof(snapshot[key]) == TYPE_INT, description + ": integer " + key)

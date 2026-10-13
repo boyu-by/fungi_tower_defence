@@ -7,8 +7,8 @@ const EDGE_SCENE: PackedScene = preload("res://scenes/colony/hypha_edge.tscn")
 const ATTACK_SCENE: PackedScene = preload("res://scenes/colony/attack_organ.tscn")
 const EPSILON: float = 0.00001
 const SNAPSHOT_KEYS: Array[String] = [
-	"task_id", "bud_id", "host", "state", "wait_reason", "progress", "effective_time",
-	"minimum_time", "total_cost", "structure_consumed", "buffered_nutrition",
+	"task_id", "bud_id", "organ_kind", "host", "state", "wait_reason", "progress", "effective_time",
+	"minimum_time", "total_cost", "structure_cost", "startup_cost", "structure_consumed", "buffered_nutrition",
 	"startup_reserved", "startup_transferred", "consumed_nutrition", "remaining_cost", "requested_nutrition",
 ]
 

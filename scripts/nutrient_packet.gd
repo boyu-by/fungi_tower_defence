@@ -159,7 +159,7 @@ func start_route(
 		_remember_plan_lifetimes(_route)
 		_has_plan = true
 		_route_revision = 1
-	if _cargo_kind != &"supply" and _cargo_kind != &"return":
+	if _cargo_kind not in [&"supply", &"return", &"transplant"]:
 		_finish(false, &"invalid_cargo_kind")
 		return
 	if not _initial_plan_is_valid():
@@ -220,7 +220,7 @@ func get_transport_snapshot() -> Dictionary:
 		"traffic_enabled": _traffic_enabled,
 		"traffic_required": _captured_traffic_required if _started else traffic_required,
 		"traffic_system_id": _traffic_system_id, "task_id": _task_id,
-		"cargo_kind": _cargo_kind, "units": CARGO_UNITS,
+		"cargo_kind": _cargo_kind, "units": _cargo_units(),
 		"cargo_id": _cargo_id, "cargo_generation": _cargo_generation,
 		"request_id": _request_id, "token": _token,
 		"current_node": _current_node if is_instance_valid(_current_node) else null,
@@ -408,7 +408,7 @@ func _request_identity_matches(request: Dictionary) -> bool:
 		and int(request.get("owner_id", 0)) == get_instance_id() \
 		and String(request.get("task_id", "")) == _task_id \
 		and StringName(request.get("cargo_kind", &"")) == _cargo_kind \
-		and int(request.get("units", 0)) == CARGO_UNITS
+		and int(request.get("units", 0)) == _cargo_units()
 
 
 func _passage_matches(request: Dictionary) -> bool:
@@ -514,9 +514,9 @@ func _object_id(object: Variant) -> int:
 
 func _find_available_fallback() -> NetworkRoute:
 	if _route_exclusions.is_empty():
-		return _network_system.find_available_route(_current_node, _final_target, CARGO_UNITS)
+		return _network_system.find_available_route(_current_node, _final_target, _cargo_units())
 	return _network_system.find_available_route_avoiding(
-		_current_node, _final_target, _route_exclusions, CARGO_UNITS)
+		_current_node, _final_target, _route_exclusions, _cargo_units())
 
 
 func _find_replacement_plan() -> NetworkRoute:
@@ -610,7 +610,7 @@ func _enter_segment() -> bool:
 		_segment_has_moved = false
 		return _set_transport_state(&"moving")
 	if _request_id.is_empty():
-		if edge.traffic_capacity < CARGO_UNITS:
+		if edge.traffic_capacity < _cargo_units():
 			_wait_at_node(&"capacity")
 			return false
 		_request_key = "nutrient:%d:revision:%d:hop:%d" % [
@@ -858,3 +858,21 @@ func _finish(was_delivered: bool, reason: StringName = &"", completed_edge: Hyph
 	if is_instance_valid(self) and not _exiting and not is_queued_for_deletion():
 		_own_completion_queue = _state == &"completed"
 		queue_free()
+
+
+func _cargo_units() -> int:
+	return NetworkTrafficSystem.units_for_kind(_cargo_kind)
+
+
+## 可视化读取当前实际改道路由；不申请交通、不重新规划、不改写运输身份。
+func get_remaining_route() -> NetworkRoute:
+	var remaining: NetworkRoute = _snapshot_route(_route)
+	if remaining == null:
+		return null
+	var kept: Array[NetworkRoute.Segment] = []
+	for index: int in range(segment_index, remaining.segments.size()):
+		kept.append(remaining.segments[index])
+	remaining.segments = kept
+	if not kept.is_empty():
+		remaining.start_node = kept[0].start_node
+	return remaining

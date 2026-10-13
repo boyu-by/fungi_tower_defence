@@ -6,12 +6,14 @@ const CORE_SCENE: PackedScene = preload("res://scenes/colony/mother_core.tscn")
 const NODE_SCENE: PackedScene = preload("res://scenes/colony/hypha_node.tscn")
 const SNAPSHOT_KEYS: Array[String] = [
 	"task_id", "state", "wait_reason", "edge", "edge_id", "source_core", "repair_point",
+	"target", "target_id", "target_name", "target_kind", "access_edge",
 	"supply_reachable", "health", "max_health", "missing_health", "initial_cost",
 	"estimated_total_cost", "consumed_nutrition", "buffered_nutrition", "paid_heal_remaining",
 	"restored_health", "remaining_cost", "remaining_demand",
 ]
 const PREVIEW_KEYS: Array[String] = [
 	"valid", "reason", "edge", "edge_id", "health", "max_health", "missing_health",
+	"target", "target_id", "target_name", "target_kind", "access_edge",
 	"estimated_cost", "repair_point", "supply_reachable",
 ]
 
@@ -193,7 +195,7 @@ func _test_edge_health_and_traversal() -> void:
 		"Partial injury keeps passage")
 	_close(edge.take_damage(100.0), 25.0, "Damage is clamped to available health")
 	var broken: Dictionary = edge.get_health_snapshot()
-	_keys(broken, ["health", "max_health", "missing_health", "damaged", "broken", "entry_enabled", "traversable"],
+	_keys(broken, ["health", "max_health", "missing_health", "damaged", "broken", "entry_enabled", "traversable", "destroyed", "functional"],
 		"Edge snapshot has exact public keys")
 	_check(broken["broken"] and not broken["traversable"] and broken["entry_enabled"]
 		and outcome.traffic_changes == 1 and fixture.network.is_edge_valid(edge)

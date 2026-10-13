@@ -94,6 +94,13 @@ func register_supply(construction_id: String, supply: Node, priority: int = 0) -
 	return _registration_is_current(registration, attempt_epoch)
 
 
+## 分化不占建造队列或生长端；稳定身份沿用通用分组轮转与独占派发。
+func register_differentiation_supply(supply: Node) -> bool:
+	if not _is_live_node(supply):
+		return false
+	return register_supply("differentiation:%d" % supply.get_instance_id(), supply, 0)
+
+
 func unregister_supply(supply: Node) -> void:
 	if not is_instance_valid(supply):
 		return

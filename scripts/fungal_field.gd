@@ -106,7 +106,7 @@ func set_sources(sources: Array[Dictionary]) -> void:
 			continue
 
 		var connection: Variant = snapshot.get("connected", false)
-		var connected: bool = connection is bool and bool(connection)
+		var connected: bool = connection is bool and bool(connection) and _source_is_functional(source_node)
 		var state: SourceState = _sources.get(instance_id) as SourceState
 		if state == null:
 			state = SourceState.new()
@@ -133,7 +133,11 @@ func advance(delta: float) -> void:
 		var state: SourceState = _sources[instance_id]
 		if _get_valid_node(state) == null:
 			removed.append(instance_id)
-		elif can_advance:
+		else:
+			if state.connected and not _source_is_functional(_get_valid_node(state)):
+				_update_connection(state, false)
+			if not can_advance:
+				continue
 			if state.connected:
 				_advance_connected(state, delta)
 			else:
@@ -237,7 +241,12 @@ func _get_target_radius(state: SourceState) -> float:
 func _get_eligible_node(state: SourceState) -> Node2D:
 	if not state.connected:
 		return null
-	return _get_valid_node(state)
+	var source_node: Node2D = _get_valid_node(state)
+	return source_node if source_node != null and _source_is_functional(source_node) else null
+
+
+func _source_is_functional(source_node: Node2D) -> bool:
+	return not source_node.has_method("is_functional") or bool(source_node.call("is_functional"))
 
 
 func _get_valid_node(state: SourceState) -> Node2D:
@@ -300,7 +309,8 @@ func _advance_disconnected(state: SourceState, delta: float) -> void:
 
 func _make_source_snapshot(state: SourceState, source_node: Node2D) -> Dictionary:
 	var phase: StringName = &"gone"
-	if state.connected:
+	var connected: bool = state.connected and _source_is_functional(source_node)
+	if connected:
 		if state.recovering:
 			phase = &"recovering"
 		elif state.display_radius < _get_target_radius(state):
@@ -311,7 +321,7 @@ func _make_source_snapshot(state: SourceState, source_node: Node2D) -> Dictionar
 		phase = &"grace" if state.disconnected_seconds < DISCONNECT_GRACE_SECONDS else &"decaying"
 	return {
 		"node": source_node,
-		"connected": state.connected,
+		"connected": connected,
 		"state": phase,
 		"display_radius": state.display_radius,
 		"effective_radius": _get_state_radius(state),

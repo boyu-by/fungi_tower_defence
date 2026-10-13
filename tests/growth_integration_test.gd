@@ -283,8 +283,11 @@ func _test_growth_pause_keeps_combat_and_recycling() -> void:
 func _test_growth_during_full_battle() -> void:
 	var level := await _new_level(true)
 	var shots: Array[int] = [0]
+	var combat_cost: Array[int] = [0]
 	for weapon: SporeWeapon in level.get_weapons():
-		weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void: shots[0] += 1)
+		weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
+			shots[0] += 1
+			combat_cost[0] += spent)
 	_press(KEY_G)
 	_push_click(Vector2(1080, 400))
 	for frame in range(7000):
@@ -300,7 +303,7 @@ func _test_growth_during_full_battle() -> void:
 	var inventory: int = 0
 	for organ: AttackOrgan in level.supply_system.get_registered_organs():
 		inventory += organ.nutrition + organ.incoming_nutrition
-	var accounted: int = level.mother_core.nutrition + inventory + shots[0] + snapshot.consumed_nutrition \
+	var accounted: int = level.mother_core.nutrition + inventory + combat_cost[0] + snapshot.consumed_nutrition \
 		+ snapshot.buffered_nutrition + level.growth_supply_system.get_in_transit_count() + level.digestive_organ.get_output_nutrition()
 	_check(accounted == 80 + level.digestive_organ.total_nutrition_produced,
 		"Combined core, organs, prepaid transit, growth and shots conserve all nutrition")

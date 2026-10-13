@@ -313,7 +313,7 @@ func get_in_transit_nutrition() -> int:
 	return amount
 
 
-## 本地库存和已经付款的战斗在途包共同覆盖每个活动器官的两发需求。
+## 本地库存和已经付款的战斗在途包共同覆盖每个活动器官的两轮实际成本。
 func get_combat_reserve() -> int:
 	if not _is_live_node(combat_supply_system):
 		return 0
@@ -321,7 +321,7 @@ func get_combat_reserve() -> int:
 	var organs: Array[AttackOrgan] = combat_supply_system.get_active_organs()
 	for organ: AttackOrgan in organs:
 		if _is_live_node(organ):
-			reserve += maxi(0, 2 * SporeWeapon.SHOT_NUTRITION \
+			reserve += maxi(0, 2 * organ.get_shot_nutrition_cost() \
 				- organ.nutrition - organ.incoming_nutrition)
 	return reserve
 

@@ -1,0 +1,78 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/levels/level_01.tscn" id="1_level"]
+[ext_resource type="Script" path="res://scripts/progression_demo.gd" id="2_demo"]
+[ext_resource type="PackedScene" path="res://scenes/recycling/large_carcass.tscn" id="3_carcass"]
+
+[sub_resource type="SystemFont" id="Font_guide"]
+font_names = PackedStringArray("PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
+
+[node name="ProgressionDemo" instance=ExtResource("1_level")]
+script = ExtResource("2_demo")
+expansion_demo_enabled = false
+carcass_demo_enabled = false
+
+[node name="RearNode" parent="World/Colony/Nodes" index="2"]
+position = Vector2(580, 470)
+
+[node name="FirstCarcass" parent="World/Remains" instance=ExtResource("3_carcass")]
+position = Vector2(1030, 450)
+total_nutrition = 80
+batch_size = 10
+
+[node name="SecondCarcass" parent="World/Remains" instance=ExtResource("3_carcass")]
+position = Vector2(110, 460)
+total_nutrition = 120
+batch_size = 10
+
+[node name="FirstResourceGuide" type="Node2D" parent="World"]
+position = Vector2(970, 440)
+
+[node name="TargetHorizontal" type="Line2D" parent="World/FirstResourceGuide"]
+points = PackedVector2Array(-9, 0, 9, 0)
+width = 1.5
+default_color = Color(0.9, 0.8, 0.5, 0.9)
+antialiased = true
+
+[node name="TargetVertical" type="Line2D" parent="World/FirstResourceGuide"]
+points = PackedVector2Array(0, -9, 0, 9)
+width = 1.5
+default_color = Color(0.9, 0.8, 0.5, 0.9)
+antialiased = true
+
+[node name="Hint" type="Label" parent="World/FirstResourceGuide"]
+offset_left = -120.0
+offset_top = 92.0
+offset_right = 214.0
+offset_bottom = 158.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_guide")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.9, 0.88, 0.7, 1)
+text = "① 尸骸80｜右翼菌结 → 十字(970,440)\nG 11｜B 11+12=23｜每批10\n实际回流满60 → 展开，解锁双尖端"
+
+[node name="SecondResourceGuide" type="Node2D" parent="World"]
+position = Vector2(180, 450)
+
+[node name="TargetHorizontal" type="Line2D" parent="World/SecondResourceGuide"]
+points = PackedVector2Array(-9, 0, 9, 0)
+width = 1.5
+default_color = Color(0.65, 0.82, 0.88, 0.9)
+antialiased = true
+
+[node name="TargetVertical" type="Line2D" parent="World/SecondResourceGuide"]
+points = PackedVector2Array(0, -9, 0, 9)
+width = 1.5
+default_color = Color(0.65, 0.82, 0.88, 0.9)
+antialiased = true
+
+[node name="Hint" type="Label" parent="World/SecondResourceGuide"]
+offset_left = -156.0
+offset_top = 82.0
+offset_right = 210.0
+offset_bottom = 148.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font_guide")
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.74, 0.87, 0.9, 1)
+text = "② 尸骸120｜左翼菌结 → 十字(180,450)\nG 16｜B 16+12=28｜每批10\n实际回流满160 → 成熟，可扩第二胃室"

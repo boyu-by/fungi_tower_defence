@@ -33,6 +33,7 @@ const REASON_TEXT: Dictionary = {
 @export var target_container: Node2D
 @export var placement_bounds: Rect2 = Rect2(0, 230, 1200, 410)
 
+var selected_organ_kind: StringName = &""
 var _selected_node: HyphaNode = null
 var _remote_placing: bool = false
 var _remote_preview_marker: GrowthTarget = null
@@ -117,7 +118,7 @@ func select_node(node: HyphaNode) -> void:
 func get_selection_status() -> Dictionary:
 	var host: HyphaNode = _selected_node if _is_live_node(_selected_node) else null
 	if is_instance_valid(construction_coordinator) and construction_coordinator.multi_worker_enabled:
-		return construction_coordinator.get_cultivation_selection(host)
+		return construction_coordinator.get_cultivation_selection(host, selected_organ_kind)
 	var task: Dictionary = {}
 	var active: bool = false
 	if _is_live_node(cultivation_system):
@@ -194,8 +195,11 @@ func refresh() -> void:
 
 
 func request_cultivation() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator) and construction_coordinator.multi_worker_enabled:
-		var result: Dictionary = construction_coordinator.enqueue_local_cultivation(_selected_node)
+		var result: Dictionary = construction_coordinator.enqueue_local_cultivation(_selected_node, selected_organ_kind)
 		if bool(result.get("accepted", false)):
 			exit_remote_placement_mode()
 			if _is_live_node(growth_input_controller):
@@ -215,7 +219,7 @@ func request_cultivation() -> bool:
 	if _is_live_node(growth_input_controller):
 		growth_input_controller.exit_placement_mode()
 	var task_id: int = cultivation_system.continue_cultivation(host) if continuing \
-		else cultivation_system.start_cultivation(host)
+		else cultivation_system.start_cultivation(host, selected_organ_kind)
 	refresh()
 	if task_id <= 0:
 		notice.emit("培育任务创建失败；请检查当前任务、连接和器官槽位")
@@ -228,6 +232,9 @@ func request_cultivation() -> bool:
 
 
 func pause_cultivation() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator) and construction_coordinator.multi_worker_enabled:
 		return construction_coordinator.pause_request(String(construction_coordinator.get_snapshot().get("selected_id", "")))
 	if _has_active_remote_request():
@@ -245,6 +252,9 @@ func pause_cultivation() -> bool:
 
 
 func resume_cultivation() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator) and construction_coordinator.multi_worker_enabled:
 		return construction_coordinator.resume_request(String(construction_coordinator.get_snapshot().get("selected_id", "")))
 	if _has_active_remote_request():
@@ -262,6 +272,9 @@ func resume_cultivation() -> bool:
 
 
 func cancel_cultivation() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator) and construction_coordinator.multi_worker_enabled:
 		return construction_coordinator.cancel_request(String(construction_coordinator.get_snapshot().get("selected_id", "")))
 	if _has_active_remote_request():
@@ -378,8 +391,11 @@ func preview_remote_at(world_position: Vector2) -> Dictionary:
 
 
 func place_remote_target(world_position: Vector2) -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if not _remote_placing:
-		notice.emit("按 B 进入远程攻击芽放置")
+		notice.emit("按 B 进入远程器官芽放置")
 		return false
 	var preview: Dictionary = preview_remote_at(world_position)
 	if not bool(preview.get("valid", false)):
@@ -387,7 +403,7 @@ func place_remote_target(world_position: Vector2) -> bool:
 		return false
 	if is_instance_valid(construction_coordinator):
 		var result: Dictionary = construction_coordinator.enqueue(&"remote_cultivation", {
-			"start_node": preview["start_node"], "target_position": world_position})
+			"start_node": preview["start_node"], "target_position": world_position, "organ_kind": _remote_kind()})
 		if not bool(result.get("accepted", false)):
 			return false
 		exit_remote_placement_mode()
@@ -397,17 +413,17 @@ func place_remote_target(world_position: Vector2) -> bool:
 	if marker == null:
 		return false
 	var start: Node2D = preview.get("start_node") as Node2D
-	var request_id: int = remote_cultivation_system.request_remote(start, world_position)
+	var request_id: int = remote_cultivation_system.request_remote(start, world_position, _remote_kind())
 	if request_id <= 0:
 		marker.free()
-		notice.emit("远程攻击芽创建失败；请检查当前任务、连接和器官槽位")
+		notice.emit("远程器官芽创建失败；请检查当前任务、连接和器官槽位")
 		refresh()
 		return false
 	_remote_quote = preview.duplicate(true)
 	_replace_remote_marker(marker)
 	exit_remote_placement_mode()
 	refresh()
-	notice.emit("已创建远程攻击芽：先延伸菌路，再供养攻击芽")
+	notice.emit("已创建远程器官芽：先延伸菌路，再供养攻击芽")
 	return true
 
 
@@ -511,7 +527,7 @@ func _continue_remote_bud() -> bool:
 		growth_input_controller.exit_placement_mode()
 	_replace_remote_marker(marker)
 	refresh()
-	notice.emit("已继续远程攻击芽，保留已建菌路与已付结构")
+	notice.emit("已继续远程器官芽，保留已建菌路与已付结构")
 	return true
 
 
@@ -533,7 +549,11 @@ func _make_remote_preview(world_position: Vector2) -> Dictionary:
 		preview["error"] = "目标必须位于可生长区域内"
 		return preview
 	if mother_core.health <= 0:
-		preview["error"] = "母核不可用，无法放置远程攻击芽"
+		preview["error"] = "母核不可用，无法放置远程器官芽"
+		return preview
+	var terrain: TerrainNavigation = growth_system.planner.terrain_navigation
+	if is_instance_valid(terrain) and not terrain.is_point_walkable(world_position, 10.0):
+		preview["error"] = "目标在岩石或战场边界内，无法生长；未扣除营养"
 		return preview
 	var start: Node2D = null
 	var nearest_distance: float = INF
@@ -543,9 +563,14 @@ func _make_remote_preview(world_position: Vector2) -> Dictionary:
 		if _overlaps_existing_host(node, world_position):
 			preview["error"] = "目标在已有母核、菌结或器官的 24 像素范围内；请选择已有菌结后按 C 培育"
 			return preview
-		if not node.global_position.is_finite() or not network_system.is_connected_to_core(node):
+		if not node.global_position.is_finite() or not network_system.is_available_connected_to_core(node):
 			continue
 		var distance: float = node.global_position.distance_squared_to(world_position)
+		if is_instance_valid(terrain):
+			var candidate: Dictionary = growth_system.planner.plan(node.global_position, world_position, false)
+			if not bool(candidate.get("valid", false)):
+				continue
+			distance = float(candidate["distance"])
 		var nearer: bool = distance < nearest_distance
 		var tie: bool = distance == nearest_distance and is_instance_valid(start)
 		if nearer or (tie and node.get_instance_id() < start.get_instance_id()):
@@ -556,12 +581,12 @@ func _make_remote_preview(world_position: Vector2) -> Dictionary:
 		return preview
 	if is_instance_valid(construction_coordinator):
 		preview = construction_coordinator.preview(&"remote_cultivation", {
-			"start_node": start, "target_position": world_position})
+			"start_node": start, "target_position": world_position, "organ_kind": _remote_kind()})
 		preview["start_node"] = start
 		preview["target_position"] = world_position
 		return preview
 	# 不裁减段数，也不另算费用；预览和提交均交给同一协调器复核。
-	return remote_cultivation_system.preview_request(start, world_position).duplicate(true)
+	return remote_cultivation_system.preview_request(start, world_position, _remote_kind()).duplicate(true)
 
 
 func _overlaps_existing_host(host: Node2D, point: Vector2) -> bool:
@@ -671,3 +696,16 @@ func _disconnect_selection() -> void:
 func _is_live_node(node: Variant) -> bool:
 	return is_instance_valid(node) and node is Node and node.is_inside_tree() \
 		and not node.is_queued_for_deletion()
+
+
+func set_organ_kind(kind: StringName) -> void:
+	if kind not in [&"attack", &"digestive"]:
+		return
+	selected_organ_kind = kind
+	refresh()
+	if _remote_placing:
+		preview_remote_at(target_container.get_global_mouse_position())
+
+
+func _remote_kind() -> StringName:
+	return &"digestive" if selected_organ_kind == &"digestive" else &"attack"

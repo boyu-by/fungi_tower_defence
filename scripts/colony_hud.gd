@@ -12,11 +12,21 @@ signal repair_mode_requested
 signal repair_requested
 signal repair_pause_requested
 signal repair_cancel_requested
+signal progression_hint_dismiss_requested
+signal progression_hint_toggle_requested(enabled: bool)
+signal combat_batch_selected(kind: StringName)
+signal combat_batch_start_requested
+signal combat_batch_stop_requested
+signal combat_hint_dismiss_requested
+signal combat_hint_toggle_requested(enabled: bool)
 
 var _traffic_snapshot: Dictionary = {}
 var _construction_queue_snapshot: Dictionary = {}
 var _node_waiting_count: int = 0
 var _edge_blocked_count: int = 0
+var _progression_hints_enabled: bool = true
+var _combat_demo_enabled: bool = false
+var _combat_hints_enabled: bool = true
 
 @onready var selection_label: Label = $SelectionLabel
 @onready var stock_label: Label = $StockLabel
@@ -41,6 +51,12 @@ var _edge_blocked_count: int = 0
 @onready var repair_request_button: Button = $RepairPanel/Buttons/Request
 @onready var repair_pause_button: Button = $RepairPanel/Buttons/Pause
 @onready var repair_cancel_button: Button = $RepairPanel/Buttons/Cancel
+@onready var progression_hint_panel: Control = $ProgressionHintPanel
+@onready var progression_hint_label: Label = $ProgressionHintPanel/Message
+@onready var progression_hint_dismiss: Button = $ProgressionHintPanel/Dismiss
+@onready var progression_hint_toggle: Button = $ProgressionHintPanel/Toggle
+@onready var differentiation_panel: DifferentiationInputController = $DifferentiationPanel
+@onready var combat_demo_panel: Control = $CombatDemoPanel
 
 var _core_nutrition: int = 0
 var _organ_nutrition: int = 0
@@ -85,26 +101,159 @@ func _ready() -> void:
 	repair_request_button.pressed.connect(func() -> void: repair_requested.emit())
 	repair_pause_button.pressed.connect(func() -> void: repair_pause_requested.emit())
 	repair_cancel_button.pressed.connect(func() -> void: repair_cancel_requested.emit())
+	progression_hint_dismiss.pressed.connect(_on_hint_dismiss_pressed)
+	progression_hint_toggle.pressed.connect(_on_hint_toggle_pressed)
+	for pair: Array in [["NormalButton", &"normal"], ["SwarmButton", &"swarm"],
+			["ArmoredButton", &"armored"], ["MixedButton", &"mixed"], ["GnawerButton", &"gnawer"]]:
+		var button: Button = combat_demo_panel.get_node_or_null(pair[0]) as Button
+		if button == null:
+			continue
+		button.pressed.connect(_on_combat_batch_button.bind(pair[1]))
+	(combat_demo_panel.get_node("StartButton") as Button).pressed.connect(
+		func() -> void: combat_batch_start_requested.emit())
+	(combat_demo_panel.get_node("StopButton") as Button).pressed.connect(
+		func() -> void: combat_batch_stop_requested.emit())
+
+
+func _on_hint_dismiss_pressed() -> void:
+	if _combat_demo_enabled:
+		combat_hint_dismiss_requested.emit()
+	else:
+		progression_hint_dismiss_requested.emit()
+
+
+func _on_hint_toggle_pressed() -> void:
+	if _combat_demo_enabled:
+		combat_hint_toggle_requested.emit(not _combat_hints_enabled)
+	else:
+		progression_hint_toggle_requested.emit(not _progression_hints_enabled)
+
+
+func _on_combat_batch_button(kind: StringName) -> void:
+	combat_batch_selected.emit(kind)
+
+
+func set_combat_demo_enabled(enabled: bool) -> void:
+	_combat_demo_enabled = enabled
+	combat_demo_panel.visible = enabled
+	traffic_label.visible = not enabled
+
+
+func show_combat_demo(snapshot: Dictionary) -> void:
+	if not _combat_demo_enabled:
+		return
+	var reasons: Dictionary = {
+		&"": "可开始 · 推荐左翼破甲、右翼散射",
+		&"stage_locked": "先真实回收至160成熟，再准备分化火力",
+		&"core_unavailable": "母核不可用 · R 重开",
+		&"differentiating": "分化尚未结束 · 等待完成或取消",
+		&"batch_active": "当前批次进行中",
+		&"enemies_remaining": "先处理场上敌人，再开始下一批",
+		&"invalid_configuration": "批次配置无效",
+		&"stopped": "演示已停止 · R 重开",
+	}
+	var phase: StringName = snapshot.get("phase", &"preparing")
+	var selected: StringName = snapshot.get("selected_batch", &"normal")
+	var reason: StringName = snapshot.get("start_reason", &"")
+	var busy: bool = phase == &"fighting" or int(snapshot.get("active", 0)) > 0
+	for pair: Array in [["NormalButton", &"normal"], ["SwarmButton", &"swarm"],
+			["ArmoredButton", &"armored"], ["MixedButton", &"mixed"], ["GnawerButton", &"gnawer"]]:
+		var button: Button = combat_demo_panel.get_node_or_null(pair[0]) as Button
+		if button == null:
+			continue
+		button.disabled = busy
+		button.set_pressed_no_signal(pair[1] == selected)
+	var status: Label = combat_demo_panel.get_node("Status") as Label
+	status.text = String(reasons.get(reason, "准备火力后开始验证批次"))
+	status.tooltip_text = String(snapshot.get("batch_title", "")) + "\n" + status.text
+	(combat_demo_panel.get_node("StartButton") as Button).disabled = not bool(snapshot.get("can_start", false))
+	(combat_demo_panel.get_node("StopButton") as Button).disabled = phase != &"fighting" \
+		or int(snapshot.get("spawned", 0)) >= int(snapshot.get("planned", 0))
+	var names: Dictionary = {&"preparing": "准备", &"fighting": "战斗验证",
+		&"cleared": "本批结束", &"stopped": "已停止生成", &"defeated": "母核被摧毁"}
+	battle_label.text = "%s · 击败 %d/%d · 场上 %d\n本批实际支出 %d 营养" % [
+		names.get(phase, "准备"), int(snapshot.get("defeated", 0)), int(snapshot.get("planned", 0)),
+		int(snapshot.get("active", 0)), int(snapshot.get("batch_spent", 0))]
+
+
+func show_combat_hint(snapshot: Dictionary) -> void:
+	if not _combat_demo_enabled:
+		return
+	progression_hint_panel.visible = not snapshot.is_empty()
+	if snapshot.is_empty():
+		return
+	_combat_hints_enabled = bool(snapshot.get("enabled", true))
+	# 关闭分工提示后只保留小型开启按钮，避免空提示底板遮住来袭敌人。
+	progression_hint_panel.get_node("Background").visible = _combat_hints_enabled
+	progression_hint_label.visible = _combat_hints_enabled
+	progression_hint_dismiss.visible = _combat_hints_enabled
+	progression_hint_panel.mouse_filter = Control.MOUSE_FILTER_STOP if _combat_hints_enabled else Control.MOUSE_FILTER_IGNORE
+	var showing: bool = _combat_hints_enabled and bool(snapshot.get("visible", false))
+	progression_hint_label.text = String(snapshot.get("text", "")) if showing else (
+		"G 接入两具尸骸 → 回收到160 → 分化火力 → 手动开始验证批次。" if _combat_hints_enabled else "分工提示已关闭。")
+	progression_hint_label.tooltip_text = progression_hint_label.text
+	progression_hint_dismiss.disabled = not showing
+	var pending: int = int(snapshot.get("pending_count", 0))
+	progression_hint_dismiss.text = "下一条（%d）" % pending if pending > 0 else "知道了"
+	progression_hint_toggle.text = "关闭引导" if _combat_hints_enabled else "开启引导"
+
+
+func is_pointer_over_combat_demo_panel(viewport_position: Vector2) -> bool:
+	return is_instance_valid(combat_demo_panel) and combat_demo_panel.visible \
+		and combat_demo_panel.get_global_rect().has_point(viewport_position)
+
+
+func show_progression_hint(snapshot: Dictionary) -> void:
+	if _combat_demo_enabled:
+		return
+	progression_hint_panel.visible = not snapshot.is_empty()
+	if snapshot.is_empty():
+		return
+	_progression_hints_enabled = bool(snapshot.get("enabled", true))
+	var has_hint: bool = _progression_hints_enabled and bool(snapshot.get("visible", false))
+	progression_hint_label.text = String(snapshot.get("text", "")) if has_hint else (
+		"成长提示已开启 · 新进展出现时会在这里提示。" if _progression_hints_enabled else "成长提示已关闭。")
+	progression_hint_label.tooltip_text = progression_hint_label.text
+	progression_hint_dismiss.disabled = not has_hint
+	var pending: int = int(snapshot.get("pending_count", 0))
+	progression_hint_dismiss.text = "下一条（%d）" % pending if pending > 0 else "知道了"
+	progression_hint_toggle.text = "关闭引导" if _progression_hints_enabled else "开启引导"
+
+
+func is_pointer_over_progression_hint(viewport_position: Vector2) -> bool:
+	if _combat_demo_enabled and not _combat_hints_enabled:
+		return progression_hint_toggle.is_visible_in_tree() \
+			and progression_hint_toggle.get_global_rect().has_point(viewport_position)
+	return progression_hint_panel.visible and progression_hint_panel.get_global_rect().has_point(viewport_position)
+
+
+func is_pointer_over_differentiation_panel(viewport_position: Vector2) -> bool:
+	return is_instance_valid(differentiation_panel) and differentiation_panel.is_pointer_over_panel(viewport_position)
+
+
+func is_pointer_over_repair_panel(viewport_position: Vector2) -> bool:
+	var panel: Control = $RepairPanel
+	return panel.visible and panel.get_global_rect().has_point(viewport_position)
 
 
 func show_repair(preview: Dictionary, task: Dictionary, supply: Dictionary,
 		budget: Dictionary, selecting: bool, vein_snapshot: Dictionary = {}) -> void:
 	var state: StringName = task.get("state", &"idle")
 	var active: bool = state in [&"waiting", &"repairing", &"paused"]
-	var selected: Variant = preview.get("edge")
+	var selected: Variant = preview.get("target", preview.get("edge"))
 	var has_selection: bool = is_instance_valid(selected)
-	var health_text: String = "修复：按 F 选择受损菌丝"
+	var health_text: String = "修复：按 F 选择受损组织或菌丝"
 	var cost_text: String = "每营养最多恢复 10 生命 · 每秒最多 10"
 	var short_cost: String = ""
 	var point: Variant = preview.get("repair_point")
 	if active:
 		point = task.get("repair_point")
 	if has_selection:
-		health_text = "菌丝生命 %.1f / %.0f" % [
+		health_text = "组织生命 %.1f / %.0f" % [
 			float(preview.get("health", 0.0)), float(preview.get("max_health", 35.0))]
 		cost_text = "预计 %d 营养 · 最后不足 10 生命也计 1" % int(preview.get("estimated_cost", 0))
 		short_cost = " · 费用 %d" % int(preview.get("estimated_cost", 0))
-	if active and has_selection and task.get("edge") == selected:
+	if active and has_selection and task.get("target", task.get("edge")) == selected:
 		cost_text = "本次预计共 %d 营养 · 尚需 %d（含缓存/在途）" % [
 			int(task.get("estimated_total_cost", 0)), int(task.get("remaining_cost", 0))]
 		short_cost = " · 共 %d / 尚需 %d" % [int(task.get("estimated_total_cost", 0)), int(task.get("remaining_cost", 0))]
@@ -121,7 +270,7 @@ func show_repair(preview: Dictionary, task: Dictionary, supply: Dictionary,
 	var states: Dictionary = {&"idle": "未开始", &"waiting": "等待修复", &"repairing": "修复中",
 		&"paused": "暂停中", &"completed": "已修复", &"cancelled": "已取消"}
 	var task_name: String = String(states.get(state, "未开始"))
-	if active and has_selection and task.get("edge") != selected:
+	if active and has_selection and task.get("target", task.get("edge")) != selected:
 		task_name = "另一段" + task_name
 	var headline: String = health_text + short_cost
 	var vein_detail: String = ""
@@ -228,7 +377,7 @@ func show_cultivation_selection(snapshot: Dictionary) -> void:
 	var message: String = String(snapshot.get("message", "选择空菌结培育：12 营养 = 8 结构 + 4 库存"))
 	if bool(snapshot.get("can_continue", false)) and snapshot.get("reason") != &"insufficient_nutrition":
 		message += " · 尚需 %d 营养" % int(snapshot.get("remaining_cost", 12))
-	cultivation_button.tooltip_text = message + "\n总费 12 营养：结构 8 + 启动库存 4；有效培育至少 3 秒"
+	cultivation_button.tooltip_text = message + "\n正式配方：攻击12＝8结构＋4库存；胃囊8全计结构；有效培育至少3秒"
 	cultivation_reason_label.text = message
 	cultivation_reason_label.tooltip_text = message
 	_update_growth_label()
@@ -303,7 +452,7 @@ func _update_growth_label() -> void:
 	growth_mode_button.disabled = active or cultivation_active or remote_active
 	growth_mode_button.text = "G 退出" if _growth_placing else "G 伸展"
 	remote_cultivation_button.disabled = active or cultivation_active or remote_active
-	remote_cultivation_button.text = "B 退出" if _remote_placing else "B 种攻击芽"
+	remote_cultivation_button.text = "B 退出" if _remote_placing else "B 种器官芽"
 	connection_mode_button.disabled = active or cultivation_active or remote_active
 	connection_mode_button.text = "L 退出" if _connection_placing else "L 连接菌结"
 	growth_pause_button.disabled = not active and not cultivation_active and not remote_active
@@ -354,7 +503,7 @@ func _update_growth_label() -> void:
 	elif not cultivation.is_empty() and not active and not _growth_placing:
 		var descriptions: Dictionary = {
 			&"waiting": "等待培育", &"cultivating": "培育中", &"paused": "培育已暂停",
-			&"cancelled": "幼芽已保留，可继续", &"completed": "攻击器官已成熟",
+			&"cancelled": "幼芽已保留，可继续", &"completed": "器官已成熟",
 		}
 		var cultivation_state: StringName = cultivation.get("state", &"idle")
 		var cultivation_title: String = descriptions.get(cultivation_state, "等待培育")
@@ -367,8 +516,8 @@ func _update_growth_label() -> void:
 			}
 			cultivation_title = waiting_text.get(cultivation.get("wait_reason", &""), cultivation_title)
 		var startup: String = "已转库存 %d" % int(cultivation.get("startup_transferred", 0)) if cultivation_state == &"completed" else (
-			"启动 %d/4" % int(cultivation.get("startup_reserved", 0)))
-		var cost: String = "尚需 %d" % int(cultivation.get("remaining_cost", 12)) if cultivation_state == &"cancelled" else "总费 12"
+			"启动 %d/%d" % [int(cultivation.get("startup_reserved", 0)), int(cultivation.get("startup_cost", 4))])
+		var cost: String = "尚需 %d" % int(cultivation.get("remaining_cost", 12)) if cultivation_state == &"cancelled" else "总费 %d" % int(cultivation.get("total_cost", 12))
 		growth_label.text = "%s · %d%% · 有效 %.1f/3.0 秒\n%s · 结构 %d/8 · %s · 缓存 %d" % [
 			cultivation_title,
 			int(round(float(cultivation.get("progress", 0.0)) * 100.0)),
@@ -446,11 +595,16 @@ func _show_multi_construction_status() -> void:
 		&"repair_budget": "营养优先用于修复", &"disconnected": "等待菌路恢复", &"paused": "保持进度与原有在途", &"": "正常推进"}
 	var consumed: int = int(detail.get("consumed_nutrition", int(detail.get("structure_consumed", 0))
 		+ int(detail.get("startup_transferred", 0))))
-	growth_label.text = "#%d %s · %s · %d%%\n%s\n已投入 %d · 缓存 %d · 启动库存 %d/4" % [
+	growth_label.text = "#%d %s · %s · %d%%\n%s\n已投入 %d · 缓存 %d · 启动库存 %d" % [
 		int(selected.get("sequence", 0)), kinds.get(selected.get("kind"), "建设"), phase,
 		int(round(float(detail.get("progress", 0.0)) * 100.0)), reasons.get(reason, String(reason)), consumed,
 		int(detail.get("buffered_nutrition", 0)),
 		int(detail.get("startup_reserved", 0)) + int(detail.get("startup_transferred", 0))]
+	var growth_detail: Dictionary = detail.get("growth_snapshot", detail)
+	if selected.get("kind") in [&"growth", &"remote_cultivation"]:
+		growth_label.text += " · 规划v%d · 剩余%d" % [int(growth_detail.get("plan_version", selected.get("parameters", {}).get("plan_version", 1))), int(detail.get("remaining_cost", 0))]
+		if bool(growth_detail.get("retarget_pending", false)):
+			growth_label.text += " · 当前已付段结束后改向"
 
 
 func _show_connection_status_text() -> void:
@@ -477,11 +631,11 @@ func _show_connection_status_text() -> void:
 
 func _show_remote_preview_text() -> void:
 	if not bool(_remote_preview.get("valid", false)):
-		growth_label.text = "种攻击芽 · 左键确认 · 右键 / Esc 退出\n" \
+		growth_label.text = "种器官芽 · 左键确认 · 右键 / Esc 退出\n" \
 			+ String(_remote_preview.get("error", "请在地图内指定落点"))
 	else:
 		var plan: Dictionary = _remote_preview.get("plan", {})
-		growth_label.text = "种攻击芽 · 距离 %.0f · 新菌结 %d\n网络 %d + 器官 %d（结构 8 + 库存 4）= %d\n左键确认 · 右键 / Esc 退出 · 预览不扣款" % [
+		growth_label.text = "种器官芽 · 距离 %.0f · 新菌结 %d\n网络 %d + 器官 %d = %d（攻击12 / 胃囊8）\n左键确认 · 右键 / Esc 退出 · 预览不扣款" % [
 			float(plan.get("distance", 0.0)), plan.get("junction_positions", PackedVector2Array()).size(),
 			int(_remote_preview.get("network_cost", 0)), int(_remote_preview.get("organ_cost", 12)),
 			int(_remote_preview.get("total_cost", 0)),
@@ -493,7 +647,7 @@ func _show_remote_status_text() -> void:
 	var phase: StringName = _remote_snapshot.get("phase", &"")
 	var descriptions: Dictionary = {
 		&"waiting": "等待供养", &"extending": "延伸网络", &"connected": "已接通，交接培育",
-		&"cultivating": "培育攻击芽", &"paused": "已暂停", &"completed": "攻击器官已成熟",
+		&"cultivating": "培育器官芽", &"paused": "已暂停", &"completed": "器官已成熟",
 		&"cancelled": "已取消，保留已付结构",
 	}
 	var title: String = String(descriptions.get(state, "等待建设"))
@@ -507,7 +661,7 @@ func _show_remote_status_text() -> void:
 	# 正式队列只在列表和地图展示外部编号，避免把内部远处请求号误认作目标编号。
 	var heading: String = "远处培育" if not _construction_queue_snapshot.is_empty() else \
 		"建设 #%d" % int(_remote_snapshot.get("request_id", 0))
-	growth_label.text = "%s · %s\n网络 %d + 器官 %d = %d · 已投入 %d · 剩余需求 %d\n器官结构 %d/8 · 启动库存 %d/4 · 缓存 %d" % [
+	growth_label.text = "%s · %s\n网络 %d + 器官 %d = %d · 已投入 %d · 剩余需求 %d\n器官结构 %d/8 · 启动库存 %d · 缓存 %d" % [
 		heading, title,
 		int(_remote_snapshot.get("network_cost", 0)), int(_remote_snapshot.get("organ_cost", 12)),
 		int(_remote_snapshot.get("total_cost", 0)), int(_remote_snapshot.get("consumed_nutrition", 0)),

@@ -105,6 +105,9 @@ func preview_at(world_position: Vector2) -> Dictionary:
 
 
 func place_target(world_position: Vector2) -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if not _placing:
 		notice.emit("按 G 进入生长目标放置")
 		return false
@@ -139,6 +142,9 @@ func place_target(world_position: Vector2) -> bool:
 
 
 func pause_growth() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator):
 		return construction_coordinator.pause_request(String(construction_coordinator.get_snapshot()["selected_id"]))
 	_connect_growth_system()
@@ -152,6 +158,9 @@ func pause_growth() -> bool:
 
 
 func resume_growth() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator):
 		return construction_coordinator.resume_request(String(construction_coordinator.get_snapshot()["selected_id"]))
 	_connect_growth_system()
@@ -165,6 +174,9 @@ func resume_growth() -> bool:
 
 
 func cancel_growth() -> bool:
+	if is_inside_tree() and get_tree().paused:
+		notice.emit("全局暂停中：可以查看和预览，恢复后再确认操作。")
+		return false
 	if is_instance_valid(construction_coordinator):
 		return construction_coordinator.cancel_request(String(construction_coordinator.get_snapshot()["selected_id"]))
 	_connect_growth_system()
@@ -255,6 +267,10 @@ func _make_preview(world_position: Vector2) -> Dictionary:
 	if not world_position.is_finite() or not placement_bounds.has_point(world_position):
 		preview["error"] = "目标必须位于可生长区域内"
 		return preview
+	var terrain: TerrainNavigation = planner.terrain_navigation
+	if is_instance_valid(terrain) and not terrain.is_point_walkable(world_position, 10.0):
+		preview["error"] = "目标在岩石或战场边界内，无法生长；未扣除营养"
+		return preview
 	var start_node: Node2D = null
 	var nearest_distance: float = INF
 	for node: Node2D in network_system.get_registered_nodes():
@@ -265,12 +281,19 @@ func _make_preview(world_position: Vector2) -> Dictionary:
 			continue
 		if not node.global_position.is_finite():
 			continue
-		if node.global_position == world_position:
+		if node.global_position == world_position and not planner.auto_join_enabled:
 			preview["error"] = "目标不能与已有菌结或母核重合"
 			return preview
-		if not network_system.is_connected_to_core(node):
+		if planner.auto_join_enabled and node is HyphaNode \
+				and node.global_position.distance_to(world_position) <= planner.auto_join_radius:
+			# 目标附近的菌结是接入终点，不能又被选作零距离或向外短生长的起点。
 			continue
-		var distance: float = node.global_position.distance_squared_to(world_position)
+		if not network_system.is_available_connected_to_core(node):
+			continue
+		var candidate: Dictionary = growth_system.preview_target(node, world_position)
+		if not bool(candidate.get("valid", false)):
+			continue
+		var distance: float = float(candidate["distance"])
 		var nearer: bool = distance < nearest_distance
 		var tie: bool = distance == nearest_distance and is_instance_valid(start_node)
 		if nearer or (tie and node.get_instance_id() < start_node.get_instance_id()):
@@ -284,10 +307,15 @@ func _make_preview(world_position: Vector2) -> Dictionary:
 			"start_node": start_node, "target_position": world_position})
 		preview.merge(queued_preview, true)
 		preview["start_node"] = start_node
+		var queued_plan: Dictionary = preview.get("plan", {})
+		preview["effective_point"] = queued_plan.get("effective_point", world_position)
+		preview["resolved_target_position"] = preview["effective_point"]
 		return preview
-	var plan: Dictionary = planner.plan(start_node.global_position, world_position, false)
+	var plan: Dictionary = growth_system.preview_target(start_node, world_position)
 	preview["start_node"] = start_node
 	preview["plan"] = plan
+	preview["effective_point"] = plan.get("effective_point", world_position)
+	preview["resolved_target_position"] = preview["effective_point"]
 	preview["valid"] = bool(plan.get("valid", false)) and float(plan.get("distance", 0.0)) > 0.0
 	preview["error"] = String(plan.get("error", ""))
 	if not bool(preview["valid"]) and String(preview["error"]).is_empty():

@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/terrain_rock.gd" id="1_rock"]
+
+[sub_resource type="RectangleShape2D" id="Rock_shape"]
+size = Vector2(96, 80)
+
+[node name="TerrainRock" type="StaticBody2D"]
+collision_layer = 1
+collision_mask = 0
+script = ExtResource("1_rock")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("Rock_shape")

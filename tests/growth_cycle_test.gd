@@ -112,7 +112,7 @@ func _press(key: Key) -> void:
 
 func _observe_level(level: Node2D) -> Dictionary:
 	var evidence: Dictionary = {
-		"shots": 0, "production": [], "arrivals": [], "progress": [],
+		"shots": 0, "nutrition_spent": 0, "production": [], "arrivals": [], "progress": [],
 		"packet_arrivals": [], "packet_interruptions": [],
 		"generic_serial": 0, "last_generic_balance": -1,
 		"return_packet": null, "retired_growth_consumed": 0,
@@ -142,8 +142,9 @@ func _observe_level(level: Node2D) -> Dictionary:
 		var progress: Array = evidence["progress"]
 		progress.append({"total": total, "count": count}))
 	for weapon: SporeWeapon in level.get_weapons():
-		weapon.shot_fired.connect(func(_enemy: BasicEnemy) -> void:
-			evidence["shots"] = int(evidence["shots"]) + 1)
+		weapon.volley_committed.connect(func(_shot_id: String, spent: int, _count: int) -> void:
+			evidence["shots"] = int(evidence["shots"]) + 1
+			evidence["nutrition_spent"] = int(evidence["nutrition_spent"]) + spent)
 	return evidence
 
 
@@ -198,7 +199,7 @@ func _resource_snapshot(level: Node2D, evidence: Dictionary) -> Dictionary:
 		"growth_buffer": int(growth["buffered_nutrition"]),
 		"growth_in_transit": int(level.growth_supply_system.get_in_transit_count()),
 		"growth_consumed": int(growth["consumed_nutrition"]) + int(evidence["retired_growth_consumed"]),
-		"shots_consumed": int(evidence["shots"]) * SporeWeapon.SHOT_NUTRITION,
+		"shots_consumed": int(evidence["nutrition_spent"]),
 		"original_remains": originals,
 		"digestive_queue": int(level.digestive_organ.get_queued_nutrition()),
 		# output 已包括返运在途；产物预留只代表空间，都不能再加一份资源。

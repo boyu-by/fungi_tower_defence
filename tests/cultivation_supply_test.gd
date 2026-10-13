@@ -352,7 +352,8 @@ func _test_real_delivery_demand_and_maturity() -> void:
 func _test_combat_reserve_and_already_paid_transit() -> void:
 	var fixture: Fixture = _new_fixture(5, 2, 0)
 	_start(fixture)
-	_check(fixture.supply.get_combat_reserve() == 4 * SporeWeapon.SHOT_NUTRITION
+	_check(fixture.supply.get_combat_reserve() == 2 * (fixture.organs[0].get_shot_nutrition_cost()
+		+ fixture.organs[1].get_shot_nutrition_cost())
 		and fixture.supply.get_available_cultivation_nutrition() == 1,
 		"Combat reserve did not sum two shots for every active organ")
 	_check(_dispatch(fixture) and not _dispatch(fixture) and fixture.source.nutrition == 4,

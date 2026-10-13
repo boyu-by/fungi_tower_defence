@@ -1,0 +1,136 @@
+{
+  "date": "2026-10-13",
+  "baseline_commit": "a854879",
+  "engine": "Godot 4.7.2 Windows",
+  "scene_comparison": {
+    "scenes": 8,
+    "nodes": 1992,
+    "differences": [],
+    "scope": "original named nodes, script references, stored gameplay properties, positions, visual data and timers; new optional runtime properties excluded"
+  },
+  "targeted_checks": [
+    {
+      "test": "connection_input_test",
+      "passed": true,
+      "checks": 165
+    },
+    {
+      "test": "construction_queue_input_test",
+      "passed": true,
+      "checks": 82
+    },
+    {
+      "test": "coordinated_combat_test",
+      "passed": true,
+      "checks": 582
+    },
+    {
+      "test": "cultivation_input_test",
+      "passed": true,
+      "checks": 80
+    },
+    {
+      "test": "differentiation_input_test",
+      "passed": true,
+      "checks": 211
+    },
+    {
+      "test": "enemy_batch_integration_test",
+      "passed": true,
+      "checks": 45
+    },
+    {
+      "test": "gameplay_foundation_test",
+      "passed": true,
+      "checks": 49
+    },
+    {
+      "test": "gameplay_legacy_navigation_test",
+      "passed": true,
+      "checks": 19
+    },
+    {
+      "test": "growth_input_test",
+      "passed": true,
+      "checks": 131
+    },
+    {
+      "test": "parallel_digestion_integration_test",
+      "passed": true,
+      "checks": 80098
+    },
+    {
+      "test": "remote_cultivation_input_test",
+      "passed": true,
+      "checks": 227
+    },
+    {
+      "test": "repair_input_test",
+      "passed": true,
+      "checks": 51
+    },
+    {
+      "test": "stage10_growth_test",
+      "passed": true,
+      "checks": 115
+    },
+    {
+      "test": "stage10_integration_test",
+      "passed": true,
+      "checks": 28
+    },
+    {
+      "test": "stage10_operations_test",
+      "passed": true,
+      "checks": 391
+    },
+    {
+      "test": "stage10_production_test",
+      "passed": true,
+      "checks": 165
+    },
+    {
+      "test": "stage11_flow_test",
+      "passed": true,
+      "checks": 6104
+    },
+    {
+      "test": "stage11_integration_test",
+      "passed": true,
+      "checks": 82
+    },
+    {
+      "test": "stage11_map_guide_test",
+      "passed": true,
+      "checks": 129
+    },
+    {
+      "test": "stage11_pause_ui_test",
+      "passed": true,
+      "checks": 54
+    },
+    {
+      "test": "stage9_lifecycle_test",
+      "passed": true,
+      "checks": 38
+    }
+  ],
+  "groups_passed": 21,
+  "checks_passed": 88846,
+  "final_import_diagnostics": [],
+  "existing_baseline_failures": [
+    {
+      "test": "combat_specialization_cycle_test",
+      "observed": [
+        "Public ledger exposes exactly the frozen mutually exclusive resource parts",
+        "Real production supply pays one legal ordinary ammunition packet before differentiation"
+      ],
+      "status": "failed before refactor; interrupted after recording failures; unchanged and excluded from passing groups"
+    }
+  ],
+  "limitations": [
+    "No full historical suite run",
+    "No new graphical keyboard-and-mouse playthrough",
+    "Three campaign levels and enemy split are outside this refactor"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "date": "2026-10-15",
+  "engine": "Godot 4.7.2",
+  "scope": "首关界面折叠与原输入行为；未改变资源或波次规则",
+  "suites": [
+    {
+      "test": "compact_hud_test",
+      "checks": 114,
+      "failures": []
+    },
+    {
+      "test": "stage11_integration_test",
+      "checks": 82,
+      "failures": []
+    },
+    {
+      "test": "stage11_pause_ui_test",
+      "checks": 54,
+      "failures": []
+    },
+    {
+      "test": "construction_queue_input_test",
+      "checks": 82,
+      "failures": []
+    },
+    {
+      "test": "stage11_map_guide_test",
+      "checks": 129,
+      "failures": []
+    },
+    {
+      "test": "differentiation_input_test",
+      "checks": 211,
+      "failures": []
+    },
+    {
+      "test": "stage11_flow_test",
+      "checks": 6104,
+      "failures": []
+    },
+    {
+      "test": "gameplay_foundation_test",
+      "checks": 49,
+      "failures": []
+    },
+    {
+      "test": "gameplay_legacy_navigation_test",
+      "checks": 19,
+      "failures": []
+    }
+  ],
+  "total_checks": 6844,
+  "graphics": [
+    "default collapsed",
+    "build drawer",
+    "queue drawer"
+  ],
+  "limitations": "六波集成使用既有加速与伤害夹具；没有把该夹具宣称为正常游玩通关。",
+  "upstream_base": "255bb14f6549991977e8f61ad4517c31b6b8d657",
+  "upstream_compatibility": "面板隐藏时的鼠标命中修正迁移到共用运营运行层；公共关卡基础与旧入口导航回归均通过。"
+}

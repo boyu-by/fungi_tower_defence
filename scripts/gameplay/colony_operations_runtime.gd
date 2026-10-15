@@ -96,7 +96,8 @@ func _input(event: InputEvent) -> void:
 					return
 			KEY_G, KEY_B, KEY_L, KEY_F:
 				_end_operation_mode()
-	if event is InputEventMouse and _operations_panel.get_global_rect().has_point(event.position):
+	if event is InputEventMouse and _operations_panel.is_visible_in_tree() \
+			and _operations_panel.get_global_rect().has_point(event.position):
 		return
 	if _operation_mode != &"" and event is InputEventMouse:
 		var point: Vector2 = get_canvas_transform().affine_inverse() * event.position

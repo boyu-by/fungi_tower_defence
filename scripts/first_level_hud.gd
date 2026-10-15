@@ -5,6 +5,7 @@ extends CanvasLayer
 signal start_requested
 signal pause_requested
 signal restart_requested
+signal continue_requested
 
 const FLOW_NAMES: Dictionary = {
 	&"initial_preparation": "初始准备",
@@ -40,6 +41,7 @@ var _ui_ready: bool = false
 @onready var result_left_label: Label = $ResultPanel/LeftStats
 @onready var result_right_label: Label = $ResultPanel/RightStats
 @onready var result_restart_button: Button = $ResultPanel/RestartButton
+@onready var result_continue_button: Button = $ResultPanel/ContinueButton
 
 
 func _init() -> void:
@@ -52,6 +54,7 @@ func _ready() -> void:
 	pause_button.pressed.connect(_on_pause_pressed)
 	restart_button.pressed.connect(_on_restart_pressed)
 	result_restart_button.pressed.connect(_on_restart_pressed)
+	result_continue_button.pressed.connect(func() -> void: continue_requested.emit())
 	for button: Button in [start_button, pause_button, restart_button, result_restart_button]:
 		button.focus_mode = Control.FOCUS_NONE
 	_ui_ready = true
@@ -96,6 +99,7 @@ func show_result(snapshot: Dictionary) -> void:
 	_result_snapshot = snapshot.duplicate(true)
 	_has_result = true
 	if _ui_ready:
+		result_continue_button.hide()
 		_render_result()
 		_render_flow()
 
@@ -104,8 +108,17 @@ func clear_result() -> void:
 	_result_snapshot.clear()
 	_has_result = false
 	if _ui_ready:
+		result_continue_button.hide()
 		_render_result()
 		_render_flow()
+
+
+func show_continue(caption: String) -> void:
+	if not _ui_ready:
+		return
+	result_continue_button.text = caption
+	result_continue_button.visible = _has_result and bool(_result_snapshot.get("victory", false))
+	result_restart_button.position.x = 90.0 if result_continue_button.visible else 200.0
 
 
 func is_pointer_over_panel(point: Vector2) -> bool:

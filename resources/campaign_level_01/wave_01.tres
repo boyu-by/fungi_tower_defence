@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="FirstLevelWave" format=3 uid="uid://66slvuikdsgp"]
+
+[ext_resource type="Script" uid="uid://b3ph4vpq7rp6x" path="res://scripts/first_level_wave.gd" id="1_wave"]
+[ext_resource type="Script" uid="uid://6pb1qg6k1p3a" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/campaign_normal_enemy.tscn" id="3_enemy"]
+
+[sub_resource type="Resource" id="Front"]
+script = ExtResource("2_entry")
+enemy_scene = ExtResource("3_enemy")
+group_count = 3
+group_interval = 5.0
+spawn_point_index = 0
+
+[resource]
+script = ExtResource("1_wave")
+entries = Array[ExtResource("2_entry")]([SubResource("Front")])
+title = "第一波 · 正面试探"
+direction_text = "少量敌人从正面靠近母核。"

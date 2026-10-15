@@ -1,0 +1,71 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/ai_facility.gd" id="2_script"]
+
+[sub_resource type="RectangleShape2D" id="HitShape"]
+size = Vector2(72, 78)
+
+[sub_resource type="SystemFont" id="Font"]
+font_names = PackedStringArray("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC")
+
+[node name="AIFacility" instance=ExtResource("1_base")]
+script = ExtResource("2_script")
+max_health = 180
+move_speed = 0.0
+remains_nutrition = 0
+
+[node name="Factory" type="Node2D" parent="Visuals"]
+
+[node name="Body" type="Polygon2D" parent="Visuals/Factory"]
+color = Color(0.3, 0.39, 0.48, 1)
+polygon = PackedVector2Array(-34, 0, -34, -57, -20, -73, 20, -73, 34, -57, 34, 0)
+
+[node name="Screen" type="Polygon2D" parent="Visuals/Factory"]
+color = Color(0.39, 0.85, 0.9, 1)
+polygon = PackedVector2Array(-21, -55, 21, -55, 21, -28, -21, -28)
+
+[node name="Grille" type="Line2D" parent="Visuals/Factory"]
+points = PackedVector2Array(-22, -15, 22, -15, 22, -9, -22, -9)
+width = 3.0
+default_color = Color(0.12, 0.18, 0.23, 1)
+
+[node name="HealthBar" parent="."]
+offset_left = -36.0
+offset_top = -84.0
+offset_right = 36.0
+offset_bottom = -78.0
+
+[node name="Title" type="Label" parent="."]
+offset_left = -100.0
+offset_top = -110.0
+offset_right = 100.0
+offset_bottom = -86.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font")
+text = "AI设施"
+horizontal_alignment = 1
+
+[node name="Status" type="Label" parent="."]
+offset_left = -110.0
+offset_top = 12.0
+offset_right = 110.0
+offset_bottom = 36.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("Font")
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+
+[node name="HitArea" type="Area2D" parent="."]
+position = Vector2(0, -36)
+collision_mask = 0
+
+[node name="Shape" type="CollisionShape2D" parent="HitArea"]
+shape = SubResource("HitShape")
+
+[node name="SpawnPoints" type="Node2D" parent="."]
+
+[node name="Exit" type="Marker2D" parent="SpawnPoints"]
+position = Vector2(0, 70)
+
+[connection signal="input_event" from="HitArea" to="." method="_on_hit_area_input"]

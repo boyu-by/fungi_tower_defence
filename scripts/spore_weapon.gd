@@ -437,6 +437,7 @@ func _select_targets(profile: WeaponProfile, origin: Vector2, enemies: Node2D,
 					if is_instance_valid(targeting_system) else child.health
 			if remaining > 0 and is_finite(distance) and distance <= maximum_distance * maximum_distance:
 				candidates.append({"target": child, "distance": distance,
+					"preferred": is_instance_valid(targeting_system) and child == targeting_system.get_priority_target(),
 					"attacking_core": child.is_attacking_core(),
 					"core_distance": child.get_core_distance_squared(), "id": child.get_instance_id()})
 	candidates.sort_custom(_target_precedes)
@@ -465,6 +466,8 @@ func _select_targets(profile: WeaponProfile, origin: Vector2, enemies: Node2D,
 
 
 func _target_precedes(first: Dictionary, second: Dictionary) -> bool:
+	if bool(first.get("preferred", false)) != bool(second.get("preferred", false)):
+		return bool(first.get("preferred", false))
 	if bool(first["attacking_core"]) != bool(second["attacking_core"]):
 		return bool(first["attacking_core"])
 	var first_core_distance: float = first["core_distance"]

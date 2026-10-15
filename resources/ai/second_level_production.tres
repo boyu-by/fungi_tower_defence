@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="AIProductionProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/ai_production_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+preparation_seconds = 10.0
+cycle_seconds = 10.0
+warning_seconds = 3.0
+destruction_grace_seconds = 20.0
+advanced_after_seconds = 20.0
+full_after_seconds = 30.0
+max_alive_per_source = 18
+normal_count = 1

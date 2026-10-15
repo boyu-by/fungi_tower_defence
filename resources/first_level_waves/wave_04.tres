@@ -1,25 +1,21 @@
-[gd_resource type="Resource" script_class="FirstLevelWave" load_steps=13 format=3]
+[gd_resource type="Resource" script_class="FirstLevelWave" format=3 uid="uid://biwpr8u424le3"]
 
-[ext_resource type="Script" path="res://scripts/first_level_wave.gd" id="1_wave"]
-[ext_resource type="Script" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="Script" uid="uid://b3ph4vpq7rp6x" path="res://scripts/first_level_wave.gd" id="1_wave"]
+[ext_resource type="Script" uid="uid://6pb1qg6k1p3a" path="res://scripts/enemy_spawn_entry.gd" id="2_entry"]
+[ext_resource type="PackedScene" path="res://scenes/enemies/armored_enemy.tscn" id="scene_armored"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="scene_normal"]
 [ext_resource type="PackedScene" path="res://scenes/enemies/swarm_enemy.tscn" id="scene_swarm"]
-[ext_resource type="PackedScene" path="res://scenes/enemies/armored_enemy.tscn" id="scene_armored"]
 
 [sub_resource type="Resource" id="Entry_01"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_normal")
 group_count = 2
-group_size = 1
 group_interval = 6.0
-member_interval = 0.0
-member_spacing = 24.0
 spawn_point_index = 0
 
 [sub_resource type="Resource" id="Entry_02"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_swarm")
-group_count = 1
 group_size = 2
 group_interval = 6.0
 member_interval = 0.25
@@ -29,27 +25,19 @@ spawn_point_index = 1
 [sub_resource type="Resource" id="Entry_03"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_armored")
-group_count = 1
-group_size = 1
 group_interval = 6.0
-member_interval = 0.0
-member_spacing = 24.0
 spawn_point_index = 0
 
 [sub_resource type="Resource" id="Entry_04"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_normal")
 group_count = 2
-group_size = 1
 group_interval = 6.0
-member_interval = 0.0
-member_spacing = 24.0
 spawn_point_index = 0
 
 [sub_resource type="Resource" id="Entry_05"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_swarm")
-group_count = 1
 group_size = 2
 group_interval = 6.0
 member_interval = 0.25
@@ -59,21 +47,14 @@ spawn_point_index = 1
 [sub_resource type="Resource" id="Entry_06"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_armored")
-group_count = 1
-group_size = 1
 group_interval = 6.0
-member_interval = 0.0
-member_spacing = 24.0
 spawn_point_index = 1
 
 [sub_resource type="Resource" id="Entry_07"]
 script = ExtResource("2_entry")
 enemy_scene = ExtResource("scene_normal")
 group_count = 2
-group_size = 1
 group_interval = 6.0
-member_interval = 0.0
-member_spacing = 24.0
 spawn_point_index = 0
 
 [resource]

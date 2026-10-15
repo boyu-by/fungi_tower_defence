@@ -1,0 +1,176 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/gameplay/colony_gameplay.tscn" id="1_base"]
+[ext_resource type="Script" path="res://scripts/second_level.gd" id="2_level"]
+[ext_resource type="PackedScene" path="res://scenes/colony/hypha_node.tscn" id="3_node"]
+[ext_resource type="PackedScene" path="res://scenes/colony/hypha_edge.tscn" id="4_edge"]
+[ext_resource type="PackedScene" path="res://scenes/colony/attack_organ.tscn" id="5_attack"]
+[ext_resource type="PackedScene" path="res://scenes/combat/spore_weapon.tscn" id="6_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/colony/digestive_organ.tscn" id="7_stomach"]
+[ext_resource type="PackedScene" path="res://scenes/recycling/large_carcass.tscn" id="8_carcass"]
+[ext_resource type="Resource" path="res://resources/weapons/normal_spore.tres" id="9_weapon_profile"]
+[ext_resource type="PackedScene" path="res://scenes/combat/ai_facility.tscn" id="10_facility"]
+[ext_resource type="Script" path="res://scripts/ai_production_controller.gd" id="11_production"]
+[ext_resource type="Resource" path="res://resources/ai/second_level_production.tres" id="12_profile"]
+[ext_resource type="PackedScene" path="res://scenes/ui/first_level_hud.tscn" id="13_hud"]
+[ext_resource type="Script" path="res://scripts/second_level_hud.gd" id="14_hud_script"]
+[ext_resource type="Script" path="res://scripts/terrain_navigation.gd" id="15_terrain"]
+[ext_resource type="Script" path="res://scripts/frontier_status.gd" id="16_frontier"]
+
+[sub_resource type="SystemFont" id="MapFont"]
+font_names = PackedStringArray("Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC")
+
+[node name="SecondLevel" instance=ExtResource("1_base")]
+script = ExtResource("2_level")
+normal_weapon_profile = ExtResource("9_weapon_profile")
+
+[node name="Ground" type="ColorRect" parent="World"]
+z_index = -10
+offset_right = 1200.0
+offset_bottom = 920.0
+mouse_filter = 2
+color = Color(0.11, 0.15, 0.17, 1)
+
+[node name="MotherCore" parent="World/Colony"]
+position = Vector2(600, 690)
+max_health = 240
+initial_nutrition = 90
+
+[node name="LeftGuard" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
+position = Vector2(475, 600)
+display_name = "左翼菌结"
+
+[node name="AttackOrgan" parent="World/Colony/Nodes/LeftGuard" instance=ExtResource("5_attack")]
+initial_nutrition = 4
+
+[node name="SporeWeapon" parent="World/Colony/Nodes/LeftGuard" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container", "targeting_system") instance=ExtResource("6_weapon")]
+position = Vector2(0, -28)
+inventory_owner = NodePath("../AttackOrgan")
+enemy_container = NodePath("../../../../Enemies")
+projectile_container = NodePath("../../../../Projectiles")
+targeting_system = NodePath("../../../../../Systems/CombatTargetingSystem")
+targeting_required = true
+
+[node name="RightGuard" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
+position = Vector2(725, 600)
+display_name = "右翼菌结"
+
+[node name="AttackOrgan" parent="World/Colony/Nodes/RightGuard" instance=ExtResource("5_attack")]
+initial_nutrition = 4
+
+[node name="SporeWeapon" parent="World/Colony/Nodes/RightGuard" node_paths=PackedStringArray("inventory_owner", "enemy_container", "projectile_container", "targeting_system") instance=ExtResource("6_weapon")]
+position = Vector2(0, -28)
+inventory_owner = NodePath("../AttackOrgan")
+enemy_container = NodePath("../../../../Enemies")
+projectile_container = NodePath("../../../../Projectiles")
+targeting_system = NodePath("../../../../../Systems/CombatTargetingSystem")
+targeting_required = true
+
+[node name="StomachHost" parent="World/Colony/Nodes" instance=ExtResource("3_node")]
+position = Vector2(600, 755)
+display_name = "后方消化菌结"
+
+[node name="DigestiveOrgan" parent="World/Colony/Nodes/StomachHost" node_paths=PackedStringArray("mother_core", "core_edge", "colony_capabilities") instance=ExtResource("7_stomach")]
+mother_core = NodePath("../../../MotherCore")
+core_edge = NodePath("../../../Connections/CoreStomach")
+colony_capabilities = NodePath("../../../../../Systems/ColonyCapabilities")
+
+[node name="CoreLeft" parent="World/Colony/Connections" node_paths=PackedStringArray("start_node", "end_node") instance=ExtResource("4_edge")]
+start_node = NodePath("../../MotherCore")
+end_node = NodePath("../../Nodes/LeftGuard")
+
+[node name="CoreRight" parent="World/Colony/Connections" node_paths=PackedStringArray("start_node", "end_node") instance=ExtResource("4_edge")]
+start_node = NodePath("../../MotherCore")
+end_node = NodePath("../../Nodes/RightGuard")
+
+[node name="CoreStomach" parent="World/Colony/Connections" node_paths=PackedStringArray("start_node", "end_node") instance=ExtResource("4_edge")]
+start_node = NodePath("../../MotherCore")
+end_node = NodePath("../../Nodes/StomachHost")
+
+[node name="SideLink" parent="World/Colony/Connections" node_paths=PackedStringArray("start_node", "end_node") instance=ExtResource("4_edge")]
+start_node = NodePath("../../Nodes/LeftGuard")
+end_node = NodePath("../../Nodes/RightGuard")
+
+[node name="LeftCarcass" parent="World/Remains" instance=ExtResource("8_carcass")]
+position = Vector2(285, 535)
+total_nutrition = 80
+
+[node name="RightCarcass" parent="World/Remains" instance=ExtResource("8_carcass")]
+position = Vector2(875, 510)
+total_nutrition = 80
+
+[node name="LeftAI" parent="World/Enemies" node_paths=PackedStringArray("mother_core") instance=ExtResource("10_facility")]
+position = Vector2(260, 300)
+mother_core = NodePath("../../Colony/MotherCore")
+facility_id = &"left"
+display_name = "左侧AI"
+max_health = 120
+
+[node name="CenterAI" parent="World/Enemies" node_paths=PackedStringArray("mother_core") instance=ExtResource("10_facility")]
+position = Vector2(600, 205)
+mother_core = NodePath("../../Colony/MotherCore")
+facility_id = &"center"
+display_name = "中央AI"
+max_health = 180
+
+[node name="RightAI" parent="World/Enemies" node_paths=PackedStringArray("mother_core") instance=ExtResource("10_facility")]
+position = Vector2(1000, 270)
+mother_core = NodePath("../../Colony/MotherCore")
+facility_id = &"right"
+display_name = "右侧AI"
+max_health = 240
+
+[node name="TerrainNavigation" type="Node2D" parent="World"]
+script = ExtResource("15_terrain")
+bounds = Rect2(20, 140, 1160, 650)
+obstacles = Array[Rect2]([Rect2(510, 415, 180, 60), Rect2(790, 310, 70, 65)])
+
+[node name="FrontierStatus" type="Node2D" parent="World"]
+script = ExtResource("16_frontier")
+compact_labels = true
+
+[node name="FirstResourceGuide" type="Node2D" parent="World"]
+position = Vector2(355, 535)
+
+[node name="Hint" type="Label" parent="World/FirstResourceGuide"]
+offset_left = -160.0
+offset_top = 46.0
+offset_right = 160.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("MapFont")
+text = "左侧尸骸80 · 接通后向左AI推进"
+horizontal_alignment = 1
+
+[node name="SecondResourceGuide" type="Node2D" parent="World"]
+position = Vector2(820, 535)
+
+[node name="Hint" type="Label" parent="World/SecondResourceGuide"]
+offset_left = -160.0
+offset_top = 46.0
+offset_right = 160.0
+offset_bottom = 90.0
+mouse_filter = 2
+theme_override_fonts/font = SubResource("MapFont")
+text = "右侧尸骸80 · 保护推进中的线路"
+horizontal_alignment = 1
+
+[node name="GrowthInputController" parent="Systems"]
+placement_bounds = Rect2(20, 140, 1160, 650)
+
+[node name="CultivationInputController" parent="Systems"]
+placement_bounds = Rect2(20, 140, 1160, 650)
+
+[node name="ConnectionInputController" parent="Systems"]
+placement_bounds = Rect2(20, 140, 1160, 650)
+
+[node name="RepairInputController" parent="Systems"]
+placement_bounds = Rect2(20, 140, 1160, 650)
+
+[node name="AIProductionController" type="Node" parent="."]
+process_mode = 1
+script = ExtResource("11_production")
+profile = ExtResource("12_profile")
+
+[node name="FirstLevelHUD" parent="." instance=ExtResource("13_hud")]
+script = ExtResource("14_hud_script")

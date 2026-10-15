@@ -12,6 +12,16 @@ var _accepting: bool = true
 var _commitments: Dictionary[String, Dictionary] = {}
 var _target_watches: Dictionary[int, Dictionary] = {}
 var _owner_watches: Dictionary[int, Dictionary] = {}
+var _priority_target: WeakRef
+
+
+func set_priority_target(target: BasicEnemy) -> void:
+	_priority_target = weakref(target) if _is_target_available(target) else null
+
+
+func get_priority_target() -> BasicEnemy:
+	var target: BasicEnemy = _priority_target.get_ref() as BasicEnemy if _priority_target != null else null
+	return target if _is_target_available(target) else null
 
 
 func _exit_tree() -> void:
@@ -144,10 +154,12 @@ func get_snapshot() -> Dictionary:
 
 
 func reset() -> void:
+	_priority_target = null
 	_clear_and_cancel(true)
 
 
 func stop() -> void:
+	_priority_target = null
 	_clear_and_cancel(false)
 
 

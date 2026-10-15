@@ -190,7 +190,7 @@ func _read_parts(level: Node) -> Dictionary:
 
 
 func _on_enemy_added(node: Node) -> void:
-	if _stopped or not node is BasicEnemy or _watched_enemies.has(node.get_instance_id()):
+	if _stopped or not node is BasicEnemy or not node.creates_remains() or _watched_enemies.has(node.get_instance_id()):
 		return
 	_watched_enemies[node.get_instance_id()] = true
 	_bind(node, &"died", _on_enemy_died)

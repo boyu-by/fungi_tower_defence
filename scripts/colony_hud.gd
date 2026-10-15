@@ -19,6 +19,7 @@ signal combat_batch_start_requested
 signal combat_batch_stop_requested
 signal combat_hint_dismiss_requested
 signal combat_hint_toggle_requested(enabled: bool)
+signal notice_changed(message: String)
 
 var _traffic_snapshot: Dictionary = {}
 var _construction_queue_snapshot: Dictionary = {}
@@ -700,6 +701,7 @@ func show_transport(in_transit: int, delivered: int, interrupted: int) -> void:
 
 func show_notice(message: String) -> void:
 	notice_label.text = message
+	notice_changed.emit(message)
 	notice_label.tooltip_text = message
 
 

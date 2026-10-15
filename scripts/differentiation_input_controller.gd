@@ -45,6 +45,7 @@ const REASON_TEXT: Dictionary = {
 @export var differentiation_supply_system: DifferentiationSupplySystem
 
 var _selected_node: HyphaNode
+var panel_presentation_enabled: bool = true
 var _observed_organ: AttackOrgan
 var _interaction_suspended: bool = false
 var _rules_expanded: bool = false
@@ -332,7 +333,7 @@ func cancel_differentiation() -> bool:
 func _update_controls(snapshot: Dictionary) -> void:
 	var active_task: Dictionary = snapshot.get("active_task", {})
 	var global_active: bool = active_task.get("state", &"idle") in [&"waiting", &"differentiating", &"paused"]
-	visible = not _interaction_suspended and (_is_live_node(_selected_node) or global_active)
+	visible = panel_presentation_enabled and not _interaction_suspended and (_is_live_node(_selected_node) or global_active)
 	if not is_node_ready():
 		return
 	if piercing_button != null:

@@ -238,7 +238,7 @@ func refresh() -> void:
 
 
 func is_pointer_over_panel(viewport_position: Vector2) -> bool:
-	if not viewport_position.is_finite() or not is_visible_in_tree():
+	if not viewport_position.is_finite() or not is_visible_in_tree() or not $Panel.is_visible_in_tree():
 		return false
 	if _ui_ready and _maturing_selector.get_popup().visible:
 		return true

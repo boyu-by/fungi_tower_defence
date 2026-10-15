@@ -148,7 +148,8 @@ func _simulation_snapshot() -> Dictionary:
 	var timers: Array = []
 	var positions: Array = []
 	for node: Node in level.find_children("*", "", true, false):
-		if node is Timer:
+		# 提示气泡的寿命属于观察界面，可在暂停中消退；游戏计时器仍全部核验冻结。
+		if node is Timer and not level.compact_hud.is_ancestor_of(node):
 			timers.append([node.get_instance_id(), node.time_left, node.is_stopped()])
 		if node is BasicEnemy or node is NutrientPacket or node is RemainsPacket or node is GrowthTip or node is SporeProjectile:
 			positions.append([node.get_instance_id(), node.global_position])

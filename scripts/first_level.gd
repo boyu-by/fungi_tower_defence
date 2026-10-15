@@ -4,11 +4,21 @@ extends "res://scripts/colony_operations_demo.gd"
 
 signal level_finished(snapshot: Dictionary)
 
+const DEVELOPMENT_SCENES: Dictionary = {
+	&"original_carcass_demo": "res://scenes/levels/large_carcass_demo.tscn",
+	&"traffic_recovery_demo": "res://scenes/levels/traffic_recovery_demo.tscn",
+	&"progression_demo": "res://scenes/levels/progression_demo.tscn",
+	&"combat_specialization_demo": "res://scenes/levels/combat_specialization_demo.tscn",
+	&"terrain_threat_demo": "res://scenes/levels/terrain_threat_demo.tscn",
+	&"colony_operations_demo": "res://scenes/levels/colony_operations_demo.tscn",
+}
+
 @onready var wave_flow: FirstLevelFlow = $FirstLevelFlow
 @onready var pause_controller: GlobalPauseController = $GlobalPauseController
 @onready var flow_hud: FirstLevelHUD = $FirstLevelHUD
 
 var first_guide: FirstEventGuide
+var compact_hud: CompactColonyHUD
 var elapsed_seconds: float = 0.0
 var _result_snapshot: Dictionary = {}
 var _pending_victory: Dictionary = {}
@@ -32,7 +42,6 @@ func _ready() -> void:
 	combat_hint_controller.set_enabled(false)
 	hud.set_combat_demo_enabled(false)
 	hud.show_progression_hint({})
-	_layout_formal_hud()
 	frontier_status.compact_labels = true
 	frontier_status.exposure_label_position = Vector2(424, 637)
 	first_guide = FirstEventGuide.new()
@@ -50,6 +59,7 @@ func _ready() -> void:
 	pause_controller.pause_changed.connect(_on_global_pause_changed)
 	wave_flow.configure(enemy_spawner)
 	_formal_ready = true
+	_layout_formal_hud()
 	_refresh_formal_hud()
 	hud.show_notice("第一关：可先用 G 接通左前方80尸骸，再点击开始第一波。Space随时暂停规划。")
 
@@ -79,9 +89,20 @@ func _input(event: InputEvent) -> void:
 		return
 	if not _result_snapshot.is_empty() or _failure_pending:
 		return
+	if event is InputEventKey and not event.is_echo():
+		for action: StringName in DEVELOPMENT_SCENES:
+			if event.is_action_pressed(action):
+				get_viewport().set_input_as_handled()
+				open_development_demo(action)
+				return
+		if event.is_pressed() and event.keycode == KEY_ESCAPE:
+			compact_hud.close_drawer()
+	if event is InputEventMouse and compact_hud.is_pointer_over_ui(event.position):
+		return
 	if event is InputEventMouse and flow_hud.is_pointer_over_panel(event.position):
 		return
-	if event is InputEventMouse and first_guide.get_global_rect().has_point(event.position):
+	if event is InputEventMouse and first_guide.is_visible_in_tree() \
+			and first_guide.get_global_rect().has_point(event.position):
 		return
 	# 正式关卡不暴露旧调试伤害/库存快捷键。
 	if event.is_action_pressed("debug_damage_core") or event.is_action_pressed("debug_consume_nutrition"):
@@ -96,8 +117,9 @@ func _input(event: InputEvent) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _formal_ready or _restart_pending or not _result_snapshot.is_empty() or _failure_pending:
 		return
-	if event is InputEventMouse and (flow_hud.is_pointer_over_panel(event.position) \
-			or first_guide.get_global_rect().has_point(event.position)):
+	if event is InputEventMouse and (compact_hud.is_pointer_over_ui(event.position) \
+			or flow_hud.is_pointer_over_panel(event.position) \
+			or (first_guide.is_visible_in_tree() and first_guide.get_global_rect().has_point(event.position))):
 		return
 	if get_tree().paused and event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT \
 			and event.pressed and not repair_input_controller.is_selecting():
@@ -232,11 +254,8 @@ func _refresh_formal_hud() -> void:
 			differentiation_input_controller.hide()
 		if get_tree().paused:
 			frontier_status.queue_redraw()
-		var repair_visible: bool = repair_input_controller.is_selecting()
-		hud.get_node("RepairPanel").visible = repair_visible
-		var context_panel: bool = differentiation_input_controller.visible or repair_visible
-		for path: String in ["GrowthButtons", "GrowthLabel", "GrowthSupplyLabel", "CultivationReasonLabel"]:
-			hud.get_node(path).visible = not context_panel
+	if is_instance_valid(compact_hud):
+		compact_hud.refresh()
 
 
 func _on_global_pause_changed(paused: bool) -> void:
@@ -325,55 +344,21 @@ func _refresh_resource_guides() -> void:
 
 
 func _layout_formal_hud() -> void:
-	for path: String in ["BattleLabel", "StageLabel", "ColonyLabel", "TrafficLabel", "RecoveryLabel", "FieldLegend", "RepairHelp", "ProgressionHintPanel"]:
-		hud.get_node(path).hide()
-	var help: Label = hud.get_node("HelpLabel")
-	help.text = "G 伸展 · B 种芽 · C 培育 · L 接合 · F/J 修复 · P 建设暂停 · K 修复暂停 · Space 全局暂停 · R 重开"
-	help.position = Vector2(24, 240)
-	help.size = Vector2(1152, 18)
-	help.add_theme_font_size_override("font_size", 13)
-	hud.selection_label.position = Vector2(24, 64)
-	hud.selection_label.size = Vector2(750, 24)
-	hud.selection_label.add_theme_font_size_override("font_size", 17)
-	hud.stock_label.position = Vector2(24, 90)
-	hud.stock_label.size = Vector2(750, 22)
-	hud.transport_label.position = Vector2(24, 114)
-	hud.transport_label.size = Vector2(750, 22)
-	hud.notice_label.position = Vector2(24, 140)
-	hud.notice_label.size = Vector2(750, 36)
-	hud.notice_label.clip_text = false
-	hud.notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hud.notice_label.add_theme_font_size_override("font_size", 13)
-	construction_queue_controller.position = Vector2(24, 640)
-	construction_queue_controller.size = Vector2(380, 160)
-	var panel: Control = hud.get_node("RepairPanel")
-	panel.position = Vector2(416, 654)
-	panel.size = Vector2(760, 120)
-	hud.repair_info_label.size.x = 740
-	var diff: Control = differentiation_input_controller
-	diff.position = Vector2(416, 642)
-	diff.get_node("Margin/Content/TypeInfoLabel").hide()
-	diff.get_node("Margin/Content/RulesScroll").hide()
-	diff.get_node("Margin/Content/Heading/RulesButton").hide()
-	diff.get_node("Margin/Content/Heading/RulesButton").tooltip_text = "成熟后8营养、至少5秒分化；分化时停止射击。取消只退未用材料。"
-	diff.size = Vector2(760, 152)
-	for path: String in ["GrowthButtons", "GrowthLabel", "GrowthSupplyLabel", "CultivationReasonLabel"]:
-		var control: Control = hud.get_node(path)
-		control.position.x = 424
-		control.size.x = 752
-	for button: Node in hud.find_children("*", "BaseButton", true, false):
-		(button as BaseButton).focus_mode = Control.FOCUS_NONE
-	# 保留开发入口，但正式运行由项目默认场景决定。
-	for button: Node in _operations_panel.get_children():
-		if button is Button and (button as Button).text == "F10 第十阶段":
-			(button as Button).text = "F10 开发演示"
+	compact_hud = CompactColonyHUD.new()
+	compact_hud.name = "CompactHUD"
+	add_child(compact_hud)
+	compact_hud.configure(self)
 
 
-func _reload_operations() -> void:
-	if _restart_pending:
+func open_development_demo(action: StringName) -> void:
+	if _restart_pending or not DEVELOPMENT_SCENES.has(action):
 		return
 	_restart_pending = true
 	wave_flow.stop(&"scene_change")
 	pause_controller.reset()
 	_announce_level_stopping(&"scene_change")
-	get_tree().change_scene_to_file("res://scenes/levels/colony_operations_demo.tscn")
+	get_tree().change_scene_to_file(String(DEVELOPMENT_SCENES[action]))
+
+
+func _reload_operations() -> void:
+	open_development_demo(&"colony_operations_demo")

@@ -5,7 +5,7 @@ extends Node2D
 signal died(enemy: BasicEnemy)
 signal attacked_tissue(target: Node2D, amount: float)
 
-enum Archetype { NORMAL = 0, SWARM = 1, ARMORED = 2, GNAWER = 3 }
+enum Archetype { NORMAL = 0, SWARM = 1, ARMORED = 2, GNAWER = 3, SILK_GNAWER = 4, JUNCTION_GNAWER = 5 }
 
 const CONTACT_TOLERANCE: float = 0.01
 const NAVIGATION_CLEARANCE: float = 10.0
@@ -19,7 +19,7 @@ const EDGE_SAMPLE_COUNT: int = 12
 @export var terrain_navigation: TerrainNavigation
 @export var network_system: NetworkSystem
 @export var archetype: Archetype = Archetype.NORMAL
-@export_range(1, 200, 1) var max_health: int = 24
+@export_range(1, 200, 1, "or_greater") var max_health: int = 24
 @export var armor: int = 0:
 	set(value):
 		if value < 0:
@@ -62,6 +62,10 @@ func get_archetype() -> int:
 	return int(archetype)
 
 
+func creates_remains() -> bool:
+	return true
+
+
 func get_archetype_snapshot() -> Dictionary:
 	# 查询实例中的真实计时器，在进入场景树前也能读取场景覆盖值。
 	var timer := get_node_or_null("AttackTimer") as Timer
@@ -94,7 +98,7 @@ func is_attacking_core() -> bool:
 		return _has_clear_contact()
 	# 无地形旧夹具允许直接启动既有计时器；纯查询仍不修改目标。
 	var reach: float = contact_range + CONTACT_TOLERANCE
-	return _target == null and not _has_terrain() and archetype != Archetype.GNAWER \
+	return _target == null and not _has_terrain() and archetype not in [Archetype.GNAWER, Archetype.SILK_GNAWER, Archetype.JUNCTION_GNAWER] \
 		and get_core_distance_squared() <= reach * reach
 
 
@@ -215,8 +219,8 @@ func _scene_scope() -> Node:
 	return scope
 
 
-func _is_scene_local(node: Node) -> bool:
-	if not is_instance_valid(node) or not node.is_inside_tree() or node.is_queued_for_deletion():
+func _is_scene_local(node: Variant) -> bool:
+	if not is_instance_valid(node) or not node is Node or not node.is_inside_tree() or node.is_queued_for_deletion():
 		return false
 	var scope := _scene_scope()
 	return is_instance_valid(scope) and (node == scope or scope.is_ancestor_of(node))
@@ -243,7 +247,7 @@ func _has_terrain() -> bool:
 	return _is_scene_local(terrain_navigation)
 
 
-func _is_target_available(target: Node2D) -> bool:
+func _is_target_available(target: Variant) -> bool:
 	if not _is_scene_local(target) or not target.has_method("take_damage"):
 		return false
 	if target == mother_core:
@@ -308,6 +312,17 @@ func _candidate_tissues() -> Array[Node2D]:
 func _choose_target() -> Dictionary:
 	var best: Dictionary = {}
 	var best_distance: float = INF
+	if archetype in [Archetype.SILK_GNAWER, Archetype.JUNCTION_GNAWER]:
+		for tissue: Node2D in _candidate_tissues():
+			var eligible: bool = tissue is HyphaEdge if archetype == Archetype.SILK_GNAWER else tissue is HyphaNode
+			if not eligible or not _is_target_available(tissue):
+				continue
+			var candidate: Dictionary = _propose_target(tissue, GNAWER_SEARCH_RANGE)
+			if not candidate.is_empty() and float(candidate["distance"]) < best_distance:
+				best = candidate
+				best_distance = float(candidate["distance"])
+		# 两种正式啃食者都不回退攻击母核或其他组织。
+		return best
 	# 无地形的原有关卡保持三个老类型直达母核的行为。
 	if archetype == Archetype.GNAWER or _has_terrain():
 		var range_limit := GNAWER_SEARCH_RANGE if archetype == Archetype.GNAWER else OPPORTUNISTIC_RANGE

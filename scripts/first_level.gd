@@ -56,6 +56,7 @@ func _ready() -> void:
 	flow_hud.start_requested.connect(start_next_wave)
 	flow_hud.pause_requested.connect(pause_controller.toggle_pause)
 	flow_hud.restart_requested.connect(restart_level)
+	flow_hud.continue_requested.connect(_open_second_level)
 	pause_controller.pause_changed.connect(_on_global_pause_changed)
 	wave_flow.configure(enemy_spawner)
 	_formal_ready = true
@@ -218,7 +219,17 @@ func _resolve_result() -> void:
 	for control: Node in hud.find_children("*", "BaseButton", true, false):
 		(control as BaseButton).disabled = true
 	flow_hud.show_result(_result_snapshot)
+	if won:
+		flow_hud.show_continue("进入第二关")
 	level_finished.emit(_result_snapshot.duplicate(true))
+
+
+func _open_second_level() -> void:
+	if _restart_pending or not bool(_result_snapshot.get("victory", false)):
+		return
+	_restart_pending = true
+	pause_controller.reset()
+	get_tree().change_scene_to_file("res://scenes/levels/second_level.tscn")
 
 
 func _count_mature_organs() -> int:

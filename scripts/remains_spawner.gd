@@ -21,7 +21,7 @@ func _on_enemy_added(child: Node) -> void:
 
 
 func _on_enemy_died(enemy: BasicEnemy) -> void:
-	if not is_instance_valid(remains_container) or remains_scene == null:
+	if not enemy.creates_remains() or not is_instance_valid(remains_container) or remains_scene == null:
 		return
 	var instance := remains_scene.instantiate()
 	if not instance is EnemyRemains:

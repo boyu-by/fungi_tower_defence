@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/enemies/gnawer_enemy.tscn" id="1_base"]
+
+[node name="SilkGnawerEnemy" instance=ExtResource("1_base")]
+archetype = 4
+
+[node name="Sprite" parent="Visuals"]
+modulate = Color(0.74, 0.9, 0.55, 1)

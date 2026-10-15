@@ -30,7 +30,8 @@ var pause_button: Button
 var more_button: Button
 var maturing_selector: OptionButton
 
-var _level: FirstLevel
+var _level
+var _objective_buttons: Dictionary[StringName, Button] = {}
 var _root: Control
 var _drawer_title: Label
 var _scroll: ScrollContainer
@@ -69,7 +70,7 @@ func _exit_tree() -> void:
 		_level.first_guide.changed.disconnect(_on_guide_changed)
 
 
-func configure(level: FirstLevel) -> void:
+func configure(level: Node2D) -> void:
 	_level = level
 	_build_shell()
 	_build_pages()
@@ -103,7 +104,7 @@ func _build_shell() -> void:
 	pause_button = _button(flow, "暂停", _level.pause_controller.toggle_pause)
 	pause_button.tooltip_text = "Space 全局暂停 / 恢复；暂停中仍可选择和预览"
 	more_button = _button(flow, "⋯", toggle_page.bind(&"more"))
-	more_button.tooltip_text = "更多：物流、操作手册、引导、重开与开发演示"
+	more_button.tooltip_text = "更多：物流、操作手册、引导与重开"
 	dock = _surface("Dock")
 	var commands: HBoxContainer = _horizontal(dock)
 	for item: Array in [[&"grow", "伸展\nG"], [&"seed", "种芽\nB"], [&"build", "培育\nC"],
@@ -176,6 +177,12 @@ func _build_pages() -> void:
 		page.mirror_label(label)
 	page.mirror_button(flow.start_button, page, true)
 	page.mirror_button(flow.pause_button)
+	if _level.has_method("get_facility_targets"):
+		for facility: AIFacility in _level.get_facility_targets():
+			_objective_buttons[facility.facility_id] = page.action(facility.display_name,
+				_level.prioritize_facility.bind(facility.facility_id))
+		page.action("恢复自动选敌", _level.clear_facility_priority)
+		page.text("点击设施设为优先目标，再次点击取消。只有射程内的器官会向它开火。")
 	page = _page(&"build")
 	page.heading("培育类型 · O 切换")
 	row = page.row()
@@ -241,8 +248,13 @@ func _build_pages() -> void:
 	_build_help_page()
 	page = _page(&"more")
 	row = page.row()
-	for item: Array in [[&"overview", "菌落概况"], [&"logistics", "运输回收"], [&"wave", "波次详情"],
-			[&"help", "操作手册 / 引导"], [&"messages", "消息记录"], [&"development", "开发演示"]]:
+	var more_items: Array = [[&"overview", "菌落概况"], [&"logistics", "运输回收"], [&"wave", "波次详情"],
+			[&"help", "操作手册 / 引导"], [&"messages", "消息记录"]]
+	if _level.has_method("get_facility_targets"):
+		more_items[2][1] = "AI目标与生产"
+	if _level.has_method("open_development_demo"):
+		more_items.append([&"development", "开发演示"])
+	for item: Array in more_items:
 		page.action(item[1], open_page.bind(item[0]), row)
 	page.mirror_button(flow.restart_button)
 	var map_toggle := CheckButton.new()
@@ -253,10 +265,11 @@ func _build_pages() -> void:
 	page.add_child(map_toggle)
 	page = _page(&"messages")
 	_history_label = page.text("暂无消息")
-	page = _page(&"development")
-	for caption: String in DEMO_ACTIONS:
-		page.action(caption, _level.open_development_demo.bind(DEMO_ACTIONS[caption]))
-	page.text("各阶段演示保留原批次、调试操作与快捷键。")
+	if _level.has_method("open_development_demo"):
+		page = _page(&"development")
+		for caption: String in DEMO_ACTIONS:
+			page.action(caption, _level.open_development_demo.bind(DEMO_ACTIONS[caption]))
+		page.text("各阶段演示保留原批次、调试操作与快捷键。")
 
 
 func _build_queue_page() -> void:
@@ -321,10 +334,13 @@ func _build_help_page() -> void:
 	page.heading("任务与修复")
 	page.text("P 建设暂停 / 继续 · X 取消建设\nF 选择组织 · J 修复 · K 修复暂停 / 继续\nBackspace 取消修复 · N 供养所选攻击器官")
 	page.heading("全局")
-	page.text("Space 全局暂停 / 恢复 · R 重开\n右键 / Esc 退出当前操作\nF5–F10 各阶段开发演示")
+	page.text("Space 全局暂停 / 恢复 · R 重开\n右键 / Esc 退出当前操作" +
+		("\nF5–F10 各阶段开发演示" if _level.has_method("open_development_demo") else ""))
 	var details: VBoxContainer = page.disclosure("首关地图与资源提示")
 	for path: String in ["World/FirstResourceGuide/Hint", "World/SecondResourceGuide/Hint", "World/BypassLabel"]:
-		page.mirror_label(_level.get_node(path) as Label, false, details)
+		var label: Label = _level.get_node_or_null(path) as Label
+		if label != null:
+			page.mirror_label(label, false, details)
 	page.text("暂停时仍可选择与预览；恢复后重新确认付费操作。收起面板不取消任何任务。", details)
 
 
@@ -340,7 +356,9 @@ func _hide_legacy_panels() -> void:
 	_level.flow_hud.colony_panel.hide()
 	_level.flow_hud.flow_panel.hide()
 	for path: String in ["World/FirstResourceGuide/Hint", "World/SecondResourceGuide/Hint", "World/BypassLabel"]:
-		(_level.get_node(path) as CanvasItem).hide()
+		var label: CanvasItem = _level.get_node_or_null(path) as CanvasItem
+		if label != null:
+			label.hide()
 
 
 func refresh() -> void:
@@ -362,7 +380,16 @@ func refresh() -> void:
 		wave_button.text = "%d/6 波 · %ds" % [wave, ceili(float(flow.get("preparation_remaining", 0.0)))]
 	else:
 		wave_button.text = "%d/6 波 · %s" % [wave, "战斗" if state == &"fighting" else "准备"]
+	if _level.has_method("get_objective_caption"):
+		wave_button.text = _level.get_objective_caption()
+		for facility: AIFacility in _level.get_facility_targets():
+			var button: Button = _objective_buttons[facility.facility_id]
+			button.text = "%s · %d/%d%s" % [facility.display_name, facility.health,
+				facility.max_health, " · 优先" if facility.prioritized else ""]
+			button.disabled = not facility.is_alive()
 	wave_button.tooltip_text = _level.flow_hud.next_label.text + "\n点击查看波次详情"
+	if not _objective_buttons.is_empty():
+		wave_button.tooltip_text = _level.flow_hud.next_label.text + "\n点击查看AI目标与生产"
 	start_button.text = _level.flow_hud.start_button.text
 	start_button.disabled = _level.flow_hud.start_button.disabled
 	pause_button.text = "恢复 · Space" if get_tree().paused else "暂停 · Space"
@@ -406,7 +433,9 @@ func _refresh_map_labels() -> void:
 			if label != null:
 				label.visible = _map_details_enabled
 	for path: String in ["World/FirstResourceGuide/Hint", "World/SecondResourceGuide/Hint", "World/BypassLabel"]:
-		(_level.get_node(path) as CanvasItem).visible = _map_details_enabled
+		var label: CanvasItem = _level.get_node_or_null(path) as CanvasItem
+		if label != null:
+			label.visible = _map_details_enabled
 
 
 func _refresh_mode() -> void:
@@ -470,7 +499,7 @@ func open_page(id: StringName) -> void:
 	active_page = id
 	for key: StringName in pages:
 		pages[key].visible = key == id
-	_drawer_title.text = PAGE_TITLES[id]
+	_drawer_title.text = "AI目标与生产" if id == &"wave" and not _objective_buttons.is_empty() else PAGE_TITLES[id]
 	_scroll.scroll_vertical = 0
 	drawer.show()
 	_layout()
@@ -621,7 +650,8 @@ func _layout() -> void:
 	_mode_panel.size = Vector2(hint_width, 86)
 	_toast.position = Vector2(24, 88)
 	_toast.size = Vector2(minf(660, viewport_size.x - 484), 38)
-	_level.frontier_status.exposure_label_position = Vector2(24, viewport_size.y - 216)
+	if is_instance_valid(_level.frontier_status):
+		_level.frontier_status.exposure_label_position = Vector2(24, viewport_size.y - 216)
 
 
 func _box(background: Color, border: Color, radius: int) -> StyleBoxFlat:

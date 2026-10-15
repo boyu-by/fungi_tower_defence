@@ -264,3 +264,13 @@ offset_bottom = 296.0
 focus_mode = 0
 theme_override_font_sizes/font_size = 16
 text = "重新开始 · R"
+
+[node name="ContinueButton" type="Button" parent="ResultPanel"]
+visible = false
+offset_left = 310.0
+offset_top = 268.0
+offset_right = 510.0
+offset_bottom = 296.0
+focus_mode = 0
+theme_override_font_sizes/font_size = 16
+text = "进入第二关"

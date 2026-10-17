@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ExplorationProductionProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/exploration_production_profile.gd" id="1_profile"]
+
+[resource]
+script = ExtResource("1_profile")
+preparation_seconds = 25.0
+cycle_seconds = 30.0
+warning_seconds = 5.0
+advanced_after_seconds = 75.0
+full_after_seconds = 180.0
+max_alive_per_source = 12
+normal_count = 1
+swarm_size = 2
+member_interval = 1.2
+source_stagger_seconds = 6.0
+collection_grace_seconds = 15.0

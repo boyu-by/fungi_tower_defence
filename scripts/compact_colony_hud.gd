@@ -183,6 +183,8 @@ func _build_pages() -> void:
 				_level.prioritize_facility.bind(facility.facility_id))
 		page.action("恢复自动选敌", _level.clear_facility_priority)
 		page.text("点击设施设为优先目标，再次点击取消。只有射程内的器官会向它开火。")
+	elif _level.has_method("get_fragment_targets"):
+		page.text("用有效菌域覆盖碎片并保持连通5秒。多处覆盖不加速，断路保留进度，收齐立即结束。")
 	page = _page(&"build")
 	page.heading("培育类型 · O 切换")
 	row = page.row()
@@ -252,6 +254,8 @@ func _build_pages() -> void:
 			[&"help", "操作手册 / 引导"], [&"messages", "消息记录"]]
 	if _level.has_method("get_facility_targets"):
 		more_items[2][1] = "AI目标与生产"
+	elif _level.has_method("get_fragment_targets"):
+		more_items[2][1] = "碎片与来袭"
 	if _level.has_method("open_development_demo"):
 		more_items.append([&"development", "开发演示"])
 	for item: Array in more_items:
@@ -382,6 +386,7 @@ func refresh() -> void:
 		wave_button.text = "%d/6 波 · %s" % [wave, "战斗" if state == &"fighting" else "准备"]
 	if _level.has_method("get_objective_caption"):
 		wave_button.text = _level.get_objective_caption()
+	if _level.has_method("get_facility_targets"):
 		for facility: AIFacility in _level.get_facility_targets():
 			var button: Button = _objective_buttons[facility.facility_id]
 			button.text = "%s · %d/%d%s" % [facility.display_name, facility.health,
@@ -390,6 +395,8 @@ func refresh() -> void:
 	wave_button.tooltip_text = _level.flow_hud.next_label.text + "\n点击查看波次详情"
 	if not _objective_buttons.is_empty():
 		wave_button.tooltip_text = _level.flow_hud.next_label.text + "\n点击查看AI目标与生产"
+	elif _level.has_method("get_fragment_targets"):
+		wave_button.tooltip_text = _level.flow_hud.next_label.text + "\n点击查看碎片与来袭"
 	start_button.text = _level.flow_hud.start_button.text
 	start_button.disabled = _level.flow_hud.start_button.disabled
 	pause_button.text = "恢复 · Space" if get_tree().paused else "暂停 · Space"
@@ -500,6 +507,8 @@ func open_page(id: StringName) -> void:
 	for key: StringName in pages:
 		pages[key].visible = key == id
 	_drawer_title.text = "AI目标与生产" if id == &"wave" and not _objective_buttons.is_empty() else PAGE_TITLES[id]
+	if id == &"wave" and _level.has_method("get_fragment_targets"):
+		_drawer_title.text = "碎片与来袭"
 	_scroll.scroll_vertical = 0
 	drawer.show()
 	_layout()

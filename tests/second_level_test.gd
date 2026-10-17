@@ -51,8 +51,11 @@ func _dispose(level: SecondLevel) -> void:
 func _initial_and_real_attack() -> void:
 	var level: SecondLevel = await _fresh()
 	_check(level.mother_core.health == 240 and level.mother_core.nutrition == 90, "second level has independent initial capital")
-	_check(level.wave_flow.profile.preparation_seconds == 30 and level.wave_flow.profile.cycle_seconds == 35,
-		"production uses planned preparation and recurring interval")
+	var configured := preload("res://resources/ai/second_level_production.tres") as AIProductionProfile
+	_check(level.wave_flow.profile.is_valid() and level.wave_flow.profile != configured \
+			and level.wave_flow.profile.preparation_seconds == configured.preparation_seconds \
+			and level.wave_flow.profile.cycle_seconds == configured.cycle_seconds,
+		"production uses an isolated copy of the current editable second-level timing configuration")
 	_check(level.wave_flow.profile.destruction_grace_seconds == 20, "destruction provides a configured twenty-second grace")
 	_check(level.get_facility_targets().map(func(ai: AIFacility) -> int: return ai.health) == [120, 180, 240],
 		"three stable facilities retain their independent initial health")

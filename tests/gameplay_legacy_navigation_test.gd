@@ -1,5 +1,5 @@
 extends SceneTree
-## Exercise the unchanged application entry, development shortcuts and R reload.
+## 标题作为应用入口；原第一关、开发快捷键与R重开仍独立可用。
 
 const ENTRY := "res://scenes/levels/first_level.tscn"
 const SHORTCUTS := {
@@ -29,7 +29,7 @@ func _step(frames: int) -> void:
 		await physics_frame
 
 func _run() -> void:
-	_check(String(ProjectSettings.get_setting("application/run/main_scene")) == ENTRY, "Application entry stays unchanged")
+	_check(String(ProjectSettings.get_setting("application/run/main_scene")) == "res://scenes/ui/main_menu.tscn", "Application entry opens the main menu")
 	change_scene_to_file(ENTRY)
 	await _step(3)
 	_check(current_scene is FirstLevel, "Current test entry still runs FirstLevel")

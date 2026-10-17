@@ -7,6 +7,7 @@ signal pause_changed(paused: bool)
 var _paused: bool = false
 var _terminal: bool = false
 var _space_down: bool = false
+var _menu_active: bool = false
 
 
 func _init() -> void:
@@ -24,6 +25,7 @@ func _exit_tree() -> void:
 	_paused = false
 	_terminal = false
 	_space_down = false
+	_menu_active = false
 
 
 func _notification(what: int) -> void:
@@ -41,11 +43,12 @@ func _input(event: InputEvent) -> void:
 		_space_down = false
 	elif not key_event.echo and not _space_down:
 		_space_down = true
-		toggle_pause()
+		if not _menu_active:
+			toggle_pause()
 
 
 func toggle_pause() -> void:
-	if _terminal:
+	if _terminal or _menu_active:
 		return
 	set_paused(not _paused)
 
@@ -69,5 +72,10 @@ func set_terminal(value: bool) -> void:
 
 func reset() -> void:
 	_terminal = false
+	_menu_active = false
 	# 重开不会把尚未松开的空格变成一次新的按下。
 	set_paused(false)
+
+
+func set_menu_active(value: bool) -> void:
+	_menu_active = value

@@ -1,0 +1,116 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_menu"]
+[ext_resource type="Theme" path="res://resources/ui/menu_theme.tres" id="2_theme"]
+[ext_resource type="Texture2D" path="res://assets/Dark World - Free Asset Pack - v1.0/Inventory/inventory_item_mushroom.png" id="3_art"]
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_menu")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.055, 0.102, 0.086, 1)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Content" type="HBoxContainer" parent="Center"]
+layout_mode = 2
+theme_override_constants/separation = 70
+
+[node name="Illustration" type="VBoxContainer" parent="Center/Content"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 20
+
+[node name="Artwork" type="TextureRect" parent="Center/Content/Illustration"]
+custom_minimum_size = Vector2(360, 320)
+layout_mode = 2
+texture_filter = 1
+texture = ExtResource("3_art")
+expand_mode = 1
+stretch_mode = 5
+mouse_filter = 2
+modulate = Color(0.8, 0.88, 0.74, 1)
+
+[node name="Caption" type="Label" parent="Center/Content/Illustration"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.52, 0.66, 0.53, 1)
+text = "生长 · 回收 · 守护"
+horizontal_alignment = 1
+
+[node name="Menu" type="PanelContainer" parent="Center/Content"]
+custom_minimum_size = Vector2(390, 480)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="Center/Content/Menu"]
+layout_mode = 2
+
+[node name="Buttons" type="VBoxContainer" parent="Center/Content/Menu/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "菌脉"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "从初次创作，到与自己和解"
+horizontal_alignment = 1
+
+[node name="Spacer" type="Control" parent="Center/Content/Menu/Margin/Buttons"]
+custom_minimum_size = Vector2(0, 6)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="StartButton" type="Button" parent="Center/Content/Menu/Margin/Buttons"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "开始游戏"
+
+[node name="ContinueButton" type="Button" parent="Center/Content/Menu/Margin/Buttons"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "继续游戏"
+
+[node name="QuitButton" type="Button" parent="Center/Content/Menu/Margin/Buttons"]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "退出游戏"
+
+[node name="Progress" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
+custom_minimum_size = Vector2(300, 66)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+theme_override_colors/font_color = Color(0.6, 0.72, 0.59, 1)
+text = "尚无游戏进度，从第一次创作开始。"
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="NewGameConfirmation" type="ConfirmationDialog" parent="."]
+process_mode = 3
+initial_position = 2

@@ -28,6 +28,9 @@ var wave_button: Button
 var start_button: Button
 var pause_button: Button
 var more_button: Button
+var menu_button: Button
+var goal_label: Label
+var level_menu: LevelMenuLayer
 var maturing_selector: OptionButton
 
 var _level
@@ -72,6 +75,9 @@ func _exit_tree() -> void:
 
 func configure(level: Node2D) -> void:
 	_level = level
+	level_menu = preload("res://scenes/ui/level_menu.tscn").instantiate() as LevelMenuLayer
+	_level.add_child(level_menu)
+	level_menu.configure(_level)
 	_build_shell()
 	_build_pages()
 	_hide_legacy_panels()
@@ -92,9 +98,17 @@ func _build_shell() -> void:
 	_root.theme = _make_theme()
 	add_child(_root)
 	top_left = _surface("Resources")
-	var resources: HBoxContainer = _horizontal(top_left)
+	var resource_column := VBoxContainer.new()
+	top_left.add_child(resource_column)
+	var resources: HBoxContainer = _horizontal(resource_column)
 	health_button = _button(resources, "母核 240/240", toggle_page.bind(&"overview"))
 	nutrition_button = _button(resources, "营养 72", toggle_page.bind(&"overview"))
+	goal_label = Label.new()
+	goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	goal_label.add_theme_font_size_override("font_size", 13)
+	goal_label.text = "目标：收集三个碎片，保护母核" if _level.has_method("get_fragment_targets") else (
+		"目标：摧毁三台AI，保护母核" if _level.has_method("get_facility_targets") else "目标：清除六波敌人，保护母核")
+	resource_column.add_child(goal_label)
 	top_right = _surface("WaveControls")
 	var flow: HBoxContainer = _horizontal(top_right)
 	wave_button = _button(flow, "初始准备 · 1/6", toggle_page.bind(&"wave"))
@@ -103,6 +117,7 @@ func _build_shell() -> void:
 	start_button.add_theme_color_override("font_color", Color("17251b"))
 	pause_button = _button(flow, "暂停", _level.pause_controller.toggle_pause)
 	pause_button.tooltip_text = "Space 全局暂停 / 恢复；暂停中仍可选择和预览"
+	menu_button = _button(flow, "菜单", level_menu.open_menu)
 	more_button = _button(flow, "⋯", toggle_page.bind(&"more"))
 	more_button.tooltip_text = "更多：物流、操作手册、引导与重开"
 	dock = _surface("Dock")
@@ -261,6 +276,7 @@ func _build_pages() -> void:
 	for item: Array in more_items:
 		page.action(item[1], open_page.bind(item[0]), row)
 	page.mirror_button(flow.restart_button)
+	page.action("游戏菜单", level_menu.open_menu)
 	var map_toggle := CheckButton.new()
 	map_toggle.name = "MapDetails"
 	map_toggle.text = "地图详细标注"
@@ -657,7 +673,7 @@ func _layout() -> void:
 	var hint_width: float = minf(700, drawer.position.x - 48) if drawer.visible else 700.0
 	_mode_panel.position = Vector2(24 if drawer.visible else (viewport_size.x - hint_width) * 0.5, viewport_size.y - 202)
 	_mode_panel.size = Vector2(hint_width, 86)
-	_toast.position = Vector2(24, 88)
+	_toast.position = Vector2(24, 112)
 	_toast.size = Vector2(minf(660, viewport_size.x - 484), 38)
 	if is_instance_valid(_level.frontier_status):
 		_level.frontier_status.exposure_label_position = Vector2(24, viewport_size.y - 216)

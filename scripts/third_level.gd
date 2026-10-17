@@ -77,6 +77,8 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _third_ready or _restart_pending:
 		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
+		return
 	if event is InputEventKey and event.keycode == KEY_SPACE:
 		return
 	if event.is_action_pressed("restart_level") and not event.is_echo():
@@ -98,6 +100,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _third_ready or _restart_pending:
+		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouse and (compact_hud.is_pointer_over_ui(event.position) \
 			or flow_hud.is_pointer_over_panel(event.position)):

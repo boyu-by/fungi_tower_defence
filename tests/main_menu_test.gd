@@ -77,6 +77,8 @@ func _run() -> void:
 	_check(menu.start_button.text == "开始游戏" and menu.quit_button.text == "退出游戏", "title exposes the planned actions")
 	_click(menu.start_button.get_global_rect().get_center())
 	_check(not navigator.start_new_game(), "pending scene transitions cannot be duplicated")
+	_check(get_nodes_in_group("story_players").size() == 1, "new game opens CG1 before gameplay")
+	for player: StoryPlayer in get_nodes_in_group("story_players"): player.finish()
 	await _frames(5)
 	_check(current_scene is FirstLevel and current_scene.mother_core.nutrition == 72, "real start click enters unchanged first level")
 	_check(navigator.active_run and navigator.progress_store.get_snapshot().has_save, "main-menu launch owns a persisted campaign session")
@@ -174,6 +176,7 @@ func _second_and_third() -> void:
 	await _frames(4)
 	_check(navigator.progress_store.get_snapshot().continue_level == 3, "second objective unlocks third once")
 	second.flow_hud.result_continue_button.pressed.emit()
+	for player: StoryPlayer in get_nodes_in_group("story_players"): player.finish()
 	await _frames(5)
 	_check(current_scene is ThirdLevel and not paused and current_scene.mother_core.nutrition == 100, "existing next-level button retains clean third entry")
 	var third := current_scene as ThirdLevel
@@ -212,6 +215,7 @@ func _reset_confirmation() -> void:
 	_check(navigator.progress_store.get_snapshot().completed, "cancelling new game preserves old record")
 	menu.start_button.pressed.emit()
 	menu.reset_dialog.confirmed.emit()
+	for player: StoryPlayer in get_nodes_in_group("story_players"): player.finish()
 	await _frames(5)
 	_check(current_scene is FirstLevel and navigator.progress_store.get_snapshot().highest_unlocked == 1, "confirmed new game resets progress and starts first")
 

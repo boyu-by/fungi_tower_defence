@@ -234,7 +234,9 @@ func _open_second_level() -> void:
 		return
 	_restart_pending = true
 	pause_controller.reset()
-	get_tree().change_scene_to_file("res://scenes/levels/second_level.tscn")
+	var player := StoryPlayer.open(self, 2)
+	player.finished.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/levels/second_level.tscn"))
 
 
 func _count_mature_organs() -> int:

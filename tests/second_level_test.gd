@@ -241,6 +241,7 @@ func _first_level_link() -> void:
 	first.flow_hud.show_continue("进入第二关")
 	_check(first.flow_hud.result_continue_button.visible, "first-level victory offers a visible next-level button")
 	first.flow_hud.result_continue_button.pressed.emit()
+	for player: StoryPlayer in get_nodes_in_group("story_players"): player.finish()
 	await _frames(4)
 	_check(current_scene is SecondLevel and not paused and current_scene.mother_core.nutrition == 90,
 		"next-level button starts a fresh second level with its own capital")

@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "初次绘画"
+caption = "小时候，我喜欢上了画画，尤其喜欢在画布上创作的感受。于是，我开始在画布上描绘属于我的冒险故事。但是，绘画的道路并非一帆风顺......"

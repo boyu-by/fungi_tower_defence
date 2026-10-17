@@ -239,6 +239,7 @@ func _restart_and_link() -> void:
 	await _frames(4)
 	_check(second.flow_hud.result_continue_button.visible, "second victory exposes third-level transition")
 	second.flow_hud.result_continue_button.pressed.emit()
+	for player: StoryPlayer in get_nodes_in_group("story_players"): player.finish()
 	await _frames(5)
 	_check(current_scene is ThirdLevel and not paused, "second-level continue opens third with clean pause state")
 	current_scene.queue_free()

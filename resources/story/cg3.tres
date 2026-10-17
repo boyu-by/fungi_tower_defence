@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "成年后的思考"
+caption = "我画了很久的画，直到成年。也学会了使用AI提升效率。我开始能够用画画养活自己，可每到夜深人静，我总会思考绘画的初心。现在的我，究竟是为什么而画画呢？"

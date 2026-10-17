@@ -34,7 +34,12 @@ func start_new_game() -> bool:
 	if _transition_pending or not progress_store.start_new_game():
 		return false
 	active_run = true
-	return _open_scene(LEVEL_SCENES[0])
+	_transition_pending = true
+	var player := StoryPlayer.open(self, 1)
+	player.finished.connect(func() -> void:
+		_transition_pending = false
+		_open_scene(LEVEL_SCENES[0]))
+	return true
 
 
 func continue_game() -> bool:

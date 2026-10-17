@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "AI冲击"
+caption = "在我成长过程中，出现了AI绘画。AI画的画更快更精美。相比之下，我的画作显得一无是处。我应该接纳AI吗？"

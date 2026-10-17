@@ -81,6 +81,8 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if not _formal_ready or _restart_pending:
 		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
+		return
 	if event is InputEventKey and event.keycode == KEY_SPACE:
 		# 子控制器在 GUI 之前处理 Space；父关卡绝不将其交给 ui_accept。
 		return
@@ -117,6 +119,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _formal_ready or _restart_pending or not _result_snapshot.is_empty() or _failure_pending:
+		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouse and (compact_hud.is_pointer_over_ui(event.position) \
 			or flow_hud.is_pointer_over_panel(event.position) \
@@ -229,7 +234,9 @@ func _open_second_level() -> void:
 		return
 	_restart_pending = true
 	pause_controller.reset()
-	get_tree().change_scene_to_file("res://scenes/levels/second_level.tscn")
+	var player := StoryPlayer.open(self, 2)
+	player.finished.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/levels/second_level.tscn"))
 
 
 func _count_mature_organs() -> int:

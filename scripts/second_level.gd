@@ -59,7 +59,7 @@ func _ready() -> void:
 	compact_hud.configure(self)
 	_second_ready = true
 	_refresh_second_hud()
-	hud.show_notice("第二关：30秒后AI开始生产。接通两侧尸骸，培育前沿火力；点击AI可设为优先目标。")
+	hud.show_notice("第二关：%d秒后AI开始生产。接通两侧尸骸，培育前沿火力；点击AI可设为优先目标。" % ceili(wave_flow.profile.preparation_seconds))
 
 
 func _process(delta: float) -> void:
@@ -73,6 +73,8 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if not _second_ready or _restart_pending:
+		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
 		return
 	if event is InputEventKey and event.keycode == KEY_SPACE:
 		return
@@ -95,6 +97,9 @@ func _input(event: InputEvent) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _second_ready or _restart_pending:
+		return
+	if is_instance_valid(compact_hud) and compact_hud.level_menu.is_open():
+		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouse and (compact_hud.is_pointer_over_ui(event.position) \
 			or flow_hud.is_pointer_over_panel(event.position)):
@@ -200,7 +205,9 @@ func _open_third_level() -> void:
 		return
 	_restart_pending = true
 	pause_controller.reset()
-	get_tree().change_scene_to_file("res://scenes/levels/third_level.tscn")
+	var player := StoryPlayer.open(self, 3)
+	player.finished.connect(func() -> void:
+		get_tree().change_scene_to_file("res://scenes/levels/third_level.tscn"))
 
 
 func _on_facility_destroyed(_id: StringName) -> void:

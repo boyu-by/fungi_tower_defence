@@ -1,13 +1,11 @@
 class_name ThirdLevelHUD
 extends FirstLevelHUD
-## 沿用前两关纯显示层；CG4为可替换的文字占位，世界停机后仍可跳过或查看结算。
-
-@export_multiline var ending_text: String = "我思考了很久，直到现在，\n才发现画画不应为了任何理由。\n仅仅是想画，所以去画。"
+## 沿用前两关纯显示层；CG4使用共用图片序列播放器，世界停机后仍可操作。
 
 var _objectives: Dictionary = {}
 var _ending_snapshot: Dictionary = {}
 var _ending_pending: bool = false
-var _ending_panel: ColorRect
+var _ending_panel: StoryPlayer
 var _ending_timer: SceneTreeTimer
 
 
@@ -67,33 +65,8 @@ func _open_ending() -> void:
 	if not is_inside_tree() or not _ending_pending:
 		return
 	_ending_timer = null
-	_ending_panel = ColorRect.new()
-	_ending_panel.name = "CG4Placeholder"
-	_ending_panel.color = Color(0.035, 0.068, 0.052, 0.98)
-	_ending_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(_ending_panel)
-	var column := VBoxContainer.new()
-	column.position = Vector2(200, 230)
-	column.size = Vector2(800, 420)
-	column.add_theme_constant_override("separation", 30)
-	_ending_panel.add_child(column)
-	var font := SystemFont.new()
-	font.font_names = PackedStringArray(["Microsoft YaHei", "Noto Sans CJK SC"])
-	var paragraphs: PackedStringArray = ["与自己和解"]
-	paragraphs.append_array(ending_text.split("\n"))
-	for text: String in paragraphs:
-		var label := Label.new()
-		label.text = text
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.add_theme_font_override("font", font)
-		label.add_theme_font_size_override("font_size", 23)
-		column.add_child(label)
-	var button := Button.new()
-	button.text = "继续 · 查看通关结算"
-	button.custom_minimum_size.y = 52
-	button.add_theme_font_override("font", font)
-	button.pressed.connect(finish_ending)
-	column.add_child(button)
+	_ending_panel = StoryPlayer.open(self, 4)
+	_ending_panel.finished.connect(finish_ending)
 
 
 func finish_ending() -> void:

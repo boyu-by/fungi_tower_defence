@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+title = "与自己和解"
+caption = "我思考了很久，直到现在，才发现画画不应为了任何理由。仅仅是想画，所以去画。"

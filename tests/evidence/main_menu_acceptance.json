@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-17",
+  "engine": "Godot 4.7.2 stable",
+  "baseline_commit": "fb8f7a9a37eb06664413db757f0b332234ebc37e",
+  "scope": "标题开始/继续/退出，三关暂停和结算导航，左上目标HUD与最近解锁关卡进度；不改变三关地图、敌人及资源数值",
+  "entry": "res://scenes/ui/main_menu.tscn",
+  "suites": [
+    {"test": "main_menu_test", "checks": 56, "failures": []},
+    {"test": "compact_hud_test", "checks": 115, "failures": []},
+    {"test": "stage11_pause_ui_test", "checks": 55, "failures": []},
+    {"test": "stage11_integration_test", "checks": 82, "failures": []},
+    {"test": "gameplay_legacy_navigation_test", "checks": 19, "failures": []},
+    {"test": "second_level_test", "checks": 51, "failures": []},
+    {"test": "third_level_test", "checks": 102, "failures": []},
+    {"test": "gameplay_foundation_test", "checks": 49, "failures": []},
+    {"test": "stage11_flow_test", "checks": 6104, "failures": []},
+    {"test": "enemy_batch_integration_test", "checks": 45, "failures": []}
+  ],
+  "total_checks": 6678,
+  "fixtures": "主菜单测试只读写res://.artifact_work/内专用进度文件；解锁与终局使用显式夹具，不覆盖玩家记录，不作为新的正常通关平衡证据",
+  "default_entry_smoke": "通过，标题在初次启动时延后创建主线导航，不新增autoload，独立运行旧场景和测试仍无常驻节点",
+  "graphics": {
+    "renderer": "OpenGL 3.3 compatibility, NVIDIA GeForce RTX 5060 Laptop GPU",
+    "reviewed": ["标题三按钮与无进度状态", "主线继续提示", "三关左上目标HUD", "暂停菜单", "失败重开与返回/退出"],
+    "result": "图形运行截图正常，控制台无脚本错误"
+  },
+  "persistence": {
+    "path": "user://campaign_progress.cfg",
+    "fields": ["version", "highest_unlocked", "continue_level", "completed"],
+    "method": "临时文件保存成功后替换正式文件；继续从最近解锁关卡开头开始，不保留局内资源或网络"
+  },
+  "cg_scope": "当前入口直接进入第一关；保留第三关CG4文字占位。四段图片序列播放器及观看记录尚待接入。"
+}

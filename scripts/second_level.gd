@@ -36,6 +36,7 @@ func _ready() -> void:
 	flow_hud.start_requested.connect(start_next_wave)
 	flow_hud.pause_requested.connect(pause_controller.toggle_pause)
 	flow_hud.restart_requested.connect(restart_level)
+	flow_hud.continue_requested.connect(_open_third_level)
 	pause_controller.pause_changed.connect(flow_hud.show_pause)
 	level_stopping.connect(wave_flow.stop)
 	level_finished.connect(_on_second_finished)
@@ -189,7 +190,17 @@ func _on_mother_core_depleted() -> void:
 
 func _on_second_finished(snapshot: Dictionary) -> void:
 	flow_hud.show_result(snapshot)
+	if bool(snapshot.get("victory", false)):
+		flow_hud.show_continue("进入第三关")
 	compact_hud.refresh()
+
+
+func _open_third_level() -> void:
+	if _restart_pending or not bool(get_result_snapshot().get("victory", false)):
+		return
+	_restart_pending = true
+	pause_controller.reset()
+	get_tree().change_scene_to_file("res://scenes/levels/third_level.tscn")
 
 
 func _on_facility_destroyed(_id: StringName) -> void:

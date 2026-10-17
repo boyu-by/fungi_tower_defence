@@ -1,0 +1,68 @@
+{
+  "date": "2026-10-17",
+  "engine": "Godot 4.7.2 stable",
+  "baseline_commit": "302518a1fb203991e100996991406b5c7800136f",
+  "scope": "第三关碎片探索、持续出怪、CG4文字占位及第二关进入第三关；未改变前两关地图、敌人或生产数值",
+  "suites": [
+    {"test": "third_level_test", "checks": 102, "failures": []},
+    {"test": "compact_hud_test", "checks": 114, "failures": []},
+    {"test": "gameplay_foundation_test", "checks": 49, "failures": []},
+    {"test": "stage11_flow_test", "checks": 6104, "failures": []},
+    {"test": "stage11_pause_ui_test", "checks": 55, "failures": []},
+    {"test": "stage11_integration_test", "checks": 82, "failures": []},
+    {"test": "second_level_test", "checks": 51, "failures": []}
+  ],
+  "total_checks": 6557,
+  "functional_fixture": "显式移动目标、推进收集时间、缩短生产周期、静止敌人或注入终局伤害；用于边界验收，不属于正常平衡试玩",
+  "graphics": {
+    "renderer": "OpenGL 3.3 compatibility, NVIDIA GeForce RTX 5060 Laptop GPU",
+    "reviewed": ["初始地图和工具坞", "碎片与来袭详情", "CG4文字占位"],
+    "result": "通过；渲染运行无脚本错误"
+  },
+  "normal_playthrough": {
+    "status": "passed",
+    "script": "tests/third_level_playthrough_test.gd",
+    "command_options": "--headless --disable-render-loop --fixed-fps 10",
+    "fixture": "只省略HUD刷新和画面渲染；物理、生产、资源、运输、付费建设、修复及分化均使用默认规则，不注入资源、伤害或免费成长",
+    "failures": [],
+    "routes": [
+      {
+        "order": ["first_creation", "persistence", "own_choice"],
+        "parallel": false,
+        "victory": true,
+        "elapsed_seconds": 173.492,
+        "first_recovery_seconds": 6.492,
+        "core_health": 240,
+        "core_nutrition": 200,
+        "total_recovered": 390,
+        "ledger_balanced": true,
+        "spawned": 32,
+        "surviving_enemies_at_victory": 5,
+        "objectives": [
+          {"id": "first_creation", "time": 45.792, "core_health": 240, "nutrition": 187},
+          {"id": "persistence", "time": 109.492, "core_health": 240, "nutrition": 201},
+          {"id": "own_choice", "time": 173.492, "core_health": 240, "nutrition": 200}
+        ]
+      },
+      {
+        "order": ["own_choice", "persistence", "first_creation"],
+        "parallel": true,
+        "victory": true,
+        "elapsed_seconds": 170.1,
+        "first_recovery_seconds": 6.6,
+        "core_health": 240,
+        "core_nutrition": 279,
+        "total_recovered": 448,
+        "ledger_balanced": true,
+        "spawned": 25,
+        "surviving_enemies_at_victory": 3,
+        "objectives": [
+          {"id": "own_choice", "time": 78.4, "core_health": 240, "nutrition": 248},
+          {"id": "persistence", "time": 125.7, "core_health": 240, "nutrition": 242},
+          {"id": "first_creation", "time": 170.1, "core_health": 240, "nutrition": 279}
+        ]
+      }
+    ]
+  },
+  "legacy_cleanup": "已按用户要求删除废弃的 scenes/levels/campaign_level_01.tscn 及 resources/campaign_level_01/ 六个专用波次资源，共七个文件。删除前确认无正式关卡或其他代码引用；可从 Git 历史恢复。"
+}

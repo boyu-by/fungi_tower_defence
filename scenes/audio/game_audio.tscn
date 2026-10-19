@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/game_audio.gd" id="1_audio"]
+[ext_resource type="Resource" path="res://resources/audio/sound_bank.tres" id="2_bank"]
+[ext_resource type="Script" path="res://scripts/audio/ui_audio_feedback.gd" id="3_ui"]
+[ext_resource type="Script" path="res://scripts/audio/colony_audio_feedback.gd" id="4_world"]
+
+[node name="GameAudio" type="Node"]
+process_mode = 3
+script = ExtResource("1_audio")
+bank = ExtResource("2_bank")
+
+[node name="Players" type="Node" parent="."]
+
+[node name="UI0" type="AudioStreamPlayer" parent="Players"]
+process_mode = 3
+bus = &"UI"
+metadata/channel = 0
+
+[node name="UI1" type="AudioStreamPlayer" parent="Players"]
+process_mode = 3
+bus = &"UI"
+metadata/channel = 0
+
+[node name="World0" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="World1" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="World2" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="World3" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="World4" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="World5" type="AudioStreamPlayer" parent="Players"]
+process_mode = 1
+bus = &"World"
+metadata/channel = 1
+
+[node name="Stinger0" type="AudioStreamPlayer" parent="Players"]
+process_mode = 3
+bus = &"Stinger"
+metadata/channel = 2
+
+[node name="SaveTimer" type="Timer" parent="."]
+wait_time = 0.4
+one_shot = true
+
+[node name="UIFeedback" type="Node" parent="."]
+script = ExtResource("3_ui")
+
+[node name="ColonyFeedback" type="Node" parent="."]
+script = ExtResource("4_world")
+
+[connection signal="timeout" from="SaveTimer" to="." method="save_preferences"]

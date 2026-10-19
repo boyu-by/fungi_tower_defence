@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_menu"]
+[ext_resource type="PackedScene" path="res://scenes/audio/game_audio.tscn" id="4_audio"]
+[ext_resource type="PackedScene" path="res://scenes/audio/audio_volume_control.tscn" id="5_volume"]
 [ext_resource type="Theme" path="res://resources/ui/menu_theme.tres" id="2_theme"]
 [ext_resource type="Texture2D" path="res://assets/Dark World - Free Asset Pack - v1.0/Inventory/inventory_item_mushroom.png" id="3_art"]
 
@@ -114,3 +116,19 @@ autowrap_mode = 3
 [node name="NewGameConfirmation" type="ConfirmationDialog" parent="."]
 process_mode = 3
 initial_position = 2
+
+[node name="GameAudio" parent="." instance=ExtResource("4_audio")]
+
+[node name="AudioVolume" parent="." instance=ExtResource("5_volume")]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -334.0
+offset_top = -70.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0

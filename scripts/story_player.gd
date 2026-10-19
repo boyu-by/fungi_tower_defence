@@ -22,6 +22,8 @@ var _outgoing: StoryStage
 var _incoming_group: CanvasGroup
 var _transition_elapsed: float = 0.0
 var _transition_duration: float = 0.0
+var _audio: GameAudio
+var _last_audio_frame: int = -1
 
 static func open(parent: Node, chapter: int) -> StoryPlayer:
 	var player := StoryPlayer.new()
@@ -32,6 +34,11 @@ static func open(parent: Node, chapter: int) -> StoryPlayer:
 func _ready() -> void:
 	add_to_group("story_players")
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_audio = GameAudio.find_for(self)
+	if _audio == null:
+		_audio = preload("res://scenes/audio/game_audio.tscn").instantiate() as GameAudio
+		add_child(_audio)
+	_audio.observe_ui(self)
 	layer = 100
 	var backdrop := ColorRect.new()
 	backdrop.color = Color("e7dfd2")
@@ -111,6 +118,8 @@ func _ready() -> void:
 	_play = _button(row, "暂停播放", _toggle_play)
 	_next = _button(row, "下一幕", advance)
 	_button(row, "跳过剧情", finish)
+	var volume := preload("res://scenes/audio/audio_volume_control.tscn").instantiate() as Control
+	row.add_child(volume)
 	_refresh()
 	_next.grab_focus()
 
@@ -204,6 +213,9 @@ func _refresh() -> void:
 	_previous.tooltip_text = "← 上一幕"
 	_next.tooltip_text = "Space 下一幕或继续"
 	_play.tooltip_text = "P 暂停或自动播放"
+	if _last_audio_frame != frame_index:
+		_last_audio_frame = frame_index
+		_audio.play(&"paper")
 
 
 func _update_transition() -> void:

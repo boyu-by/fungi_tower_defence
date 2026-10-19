@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" path="res://scripts/basic_enemy.gd" id="1_enemy"]
 [ext_resource type="Texture2D" path="res://assets/Dark World - Free Asset Pack - v1.0/Character/character_sheet.png" id="2_sheet"]
+[ext_resource type="Script" path="res://scripts/visuals/enemy_art_view.gd" id="3_art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/camera_idle.tres" id="4_art_preview"]
 
 [sub_resource type="AtlasTexture" id="Atlas_stand"]
 atlas = ExtResource("2_sheet")
@@ -52,6 +54,24 @@ position = Vector2(0, -26)
 scale = Vector2(2, 2)
 sprite_frames = SubResource("SpriteFrames_enemy")
 animation = &"idle"
+
+[node name="Art" type="Sprite2D" parent="Visuals"]
+visible = false
+texture_filter = 2
+texture = ExtResource("4_art_preview")
+script = ExtResource("3_art_view")
+
+[node name="ArtRole" type="Label" parent="Visuals"]
+visible = false
+offset_left = 16.0
+offset_top = -56.0
+offset_right = 38.0
+offset_bottom = -34.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.2, 0.17, 0.15, 1)
+theme_override_colors/font_outline_color = Color(1, 0.97, 0.88, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 16
 
 [node name="HealthBar" type="ProgressBar" parent="."]
 offset_left = -20.0

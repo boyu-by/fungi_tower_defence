@@ -2,26 +2,35 @@
 
 [ext_resource type="Script" path="res://scripts/attack_organ.gd" id="1_organ"]
 [ext_resource type="Script" path="res://scripts/organ_differentiation_view.gd" id="2_differentiation_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/pencil_turret.tres" id="pencil_art"]
 
 [sub_resource type="RectangleShape2D" id="Rectangle_hit"]
-size = Vector2(46, 52)
+size = Vector2(64, 74)
 
 [node name="AttackOrgan" type="Node2D"]
 script = ExtResource("1_organ")
 
 [node name="Shadow" type="Polygon2D" parent="."]
-color = Color(0.05, 0.08, 0.06, 0.5)
+color = Color(0.37, 0.3, 0.23, 0.15)
 polygon = PackedVector2Array(-24, 0, -16, -7, 16, -7, 24, 0, 16, 7, -16, 7)
 
 [node name="Stalk" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.56, 0.66, 0.43, 1)
 polygon = PackedVector2Array(-7, -3, -5, -30, 5, -30, 8, -3, 0, 2)
 
 [node name="Cap" type="Polygon2D" parent="."]
+self_modulate = Color(1, 1, 1, 0)
 color = Color(0.63, 0.31, 0.23, 1)
 polygon = PackedVector2Array(-23, -25, -17, -36, -5, -42, 8, -41, 20, -32, 23, -25, 12, -20, -11, -20)
 
+[node name="ArtSprite" type="Sprite2D" parent="Cap"]
+position = Vector2(0, -36)
+scale = Vector2(0.18414, 0.18414)
+texture = ExtResource("pencil_art")
+
 [node name="CapHighlight" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.83, 0.47, 0.29, 1)
 polygon = PackedVector2Array(-17, -31, -5, -38, 6, -37, 14, -32, 3, -29, -7, -29)
 
@@ -70,7 +79,7 @@ mouse_filter = 2
 color = Color(0.23, 0.29, 0.26, 1)
 
 [node name="HitArea" type="Area2D" parent="."]
-position = Vector2(0, -20)
+position = Vector2(0, -35)
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitArea"]

@@ -2,45 +2,54 @@
 
 [ext_resource type="Script" path="res://scripts/digestive_organ.gd" id="1_organ"]
 [ext_resource type="Script" path="res://scripts/digestive_chamber_view.gd" id="2_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/digest_idle.tres" id="digest_art"]
 
 [sub_resource type="RectangleShape2D" id="Shape_hit"]
-size = Vector2(58, 56)
+size = Vector2(68, 76)
 
 [sub_resource type="SystemFont" id="Font_ui"]
 font_names = PackedStringArray("Hiragino Sans GB", "Heiti SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC")
 
 [sub_resource type="StyleBoxFlat" id="Progress_background"]
-bg_color = Color(0.08, 0.1, 0.09, 1)
+bg_color = Color(0.75, 0.7, 0.65, 0.8)
 
 [sub_resource type="StyleBoxFlat" id="Progress_fill"]
-bg_color = Color(0.81, 0.74, 0.48, 1)
+bg_color = Color(0.65, 0.49, 0.67, 1)
 
 [node name="DigestiveOrgan" type="Node2D"]
 script = ExtResource("1_organ")
 
 [node name="Shadow" type="Polygon2D" parent="."]
-color = Color(0.05, 0.08, 0.06, 0.5)
+color = Color(0.37, 0.3, 0.23, 0.15)
 polygon = PackedVector2Array(-31, 0, -21, -9, 21, -9, 31, 0, 21, 9, -21, 9)
 
 [node name="Stalk" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.56, 0.47, 0.56, 1)
 polygon = PackedVector2Array(-10, 0, -13, -34, 13, -34, 10, 0, 0, 5)
 
 [node name="Cap" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.53, 0.32, 0.52, 1)
 polygon = PackedVector2Array(-29, -27, -22, -43, -9, -52, 9, -52, 23, -43, 29, -27, 16, -21, -16, -21)
 
 [node name="Pores" type="Line2D" parent="."]
+visible = false
 points = PackedVector2Array(-18, -28, -9, -24, 0, -28, 9, -24, 18, -28)
 width = 3.0
 default_color = Color(0.85, 0.64, 0.61, 1)
 antialiased = true
 
+[node name="ArtSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -36.49)
+scale = Vector2(0.19155, 0.19155)
+texture = ExtResource("digest_art")
+
 [node name="ProgressBar" type="ProgressBar" parent="."]
 offset_left = -30.0
-offset_top = -65.0
+offset_top = -86.0
 offset_right = 30.0
-offset_bottom = -60.0
+offset_bottom = -81.0
 mouse_filter = 2
 theme_override_styles/background = SubResource("Progress_background")
 theme_override_styles/fill = SubResource("Progress_fill")
@@ -61,9 +70,9 @@ horizontal_alignment = 1
 
 [node name="ChamberStatus" type="Label" parent="."]
 offset_left = -44.0
-offset_top = -100.0
+offset_top = -122.0
 offset_right = 44.0
-offset_bottom = -69.0
+offset_bottom = -91.0
 mouse_filter = 2
 theme_override_fonts/font = SubResource("Font_ui")
 theme_override_font_sizes/font_size = 12
@@ -77,28 +86,36 @@ position = Vector2(72, 0)
 [node name="Body" type="Node2D" parent="SecondChamber"]
 
 [node name="Shadow" type="Polygon2D" parent="SecondChamber/Body"]
-color = Color(0.05, 0.08, 0.06, 0.5)
+color = Color(0.37, 0.3, 0.23, 0.15)
 polygon = PackedVector2Array(-27, 0, -18, -8, 18, -8, 27, 0, 18, 8, -18, 8)
 
 [node name="Stalk" type="Polygon2D" parent="SecondChamber/Body"]
+visible = false
 color = Color(0.56, 0.47, 0.56, 1)
 polygon = PackedVector2Array(-9, 0, -11, -30, 11, -30, 9, 0, 0, 4)
 
 [node name="Cap" type="Polygon2D" parent="SecondChamber/Body"]
+visible = false
 color = Color(0.53, 0.32, 0.52, 1)
 polygon = PackedVector2Array(-25, -25, -20, -39, -8, -47, 8, -47, 20, -39, 25, -25, 14, -19, -14, -19)
 
 [node name="Pores" type="Line2D" parent="SecondChamber/Body"]
+visible = false
 points = PackedVector2Array(-16, -25, -8, -22, 0, -25, 8, -22, 16, -25)
 width = 3.0
 default_color = Color(0.85, 0.64, 0.61, 1)
 antialiased = true
 
+[node name="ArtSprite" type="Sprite2D" parent="SecondChamber/Body"]
+position = Vector2(0, -36.49)
+scale = Vector2(0.19155, 0.19155)
+texture = ExtResource("digest_art")
+
 [node name="ProgressBar" type="ProgressBar" parent="SecondChamber"]
 offset_left = -26.0
-offset_top = -65.0
+offset_top = -86.0
 offset_right = 26.0
-offset_bottom = -60.0
+offset_bottom = -81.0
 mouse_filter = 2
 theme_override_styles/background = SubResource("Progress_background")
 theme_override_styles/fill = SubResource("Progress_fill")
@@ -108,9 +125,9 @@ show_percentage = false
 
 [node name="StateLabel" type="Label" parent="SecondChamber"]
 offset_left = -48.0
-offset_top = -100.0
+offset_top = -122.0
 offset_right = 48.0
-offset_bottom = -69.0
+offset_bottom = -91.0
 mouse_filter = 2
 theme_override_fonts/font = SubResource("Font_ui")
 theme_override_font_sizes/font_size = 12
@@ -133,7 +150,7 @@ theme_override_font_sizes/font_size = 16
 horizontal_alignment = 1
 
 [node name="HitArea" type="Area2D" parent="."]
-position = Vector2(0, -25)
+position = Vector2(0, -38)
 collision_mask = 0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitArea"]

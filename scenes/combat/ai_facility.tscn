@@ -2,6 +2,8 @@
 
 [ext_resource type="PackedScene" path="res://scenes/enemies/basic_enemy.tscn" id="1_base"]
 [ext_resource type="Script" path="res://scripts/ai_facility.gd" id="2_script"]
+[ext_resource type="Script" path="res://scripts/visuals/facility_art_view.gd" id="3_art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/computer_idle.tres" id="4_art_preview"]
 
 [sub_resource type="RectangleShape2D" id="HitShape"]
 size = Vector2(72, 78)
@@ -30,6 +32,12 @@ points = PackedVector2Array(-22, -15, 22, -15, 22, -9, -22, -9)
 width = 3.0
 default_color = Color(0.12, 0.18, 0.23, 1)
 
+[node name="Art" type="Sprite2D" parent="Visuals/Factory"]
+visible = false
+texture_filter = 2
+texture = ExtResource("4_art_preview")
+script = ExtResource("3_art_view")
+
 [node name="HealthBar" parent="."]
 offset_left = -36.0
 offset_top = -84.0
@@ -43,6 +51,9 @@ offset_right = 100.0
 offset_bottom = -86.0
 mouse_filter = 2
 theme_override_fonts/font = SubResource("Font")
+theme_override_colors/font_color = Color(0.22, 0.18, 0.15, 1)
+theme_override_colors/font_outline_color = Color(1, 0.97, 0.89, 1)
+theme_override_constants/outline_size = 4
 text = "AI设施"
 horizontal_alignment = 1
 
@@ -53,6 +64,9 @@ offset_right = 110.0
 offset_bottom = 36.0
 mouse_filter = 2
 theme_override_fonts/font = SubResource("Font")
+theme_override_colors/font_color = Color(0.27, 0.23, 0.18, 1)
+theme_override_colors/font_outline_color = Color(1, 0.97, 0.89, 1)
+theme_override_constants/outline_size = 3
 theme_override_font_sizes/font_size = 13
 horizontal_alignment = 1
 

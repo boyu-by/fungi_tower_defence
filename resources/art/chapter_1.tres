@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="WorldArtTheme" format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/world_art_theme.gd" id="theme"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/easel_resource.tres" id="resource"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_remains.tres" id="remains"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_obstacle.tres" id="obstacle"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_1.tres" id="crayon1"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_2.tres" id="crayon2"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_3.tres" id="crayon3"]
+
+[resource]
+script = ExtResource("theme")
+large_resource = ExtResource("resource")
+remains = ExtResource("remains")
+obstacle = ExtResource("obstacle")
+nutrients = Array[Texture2D]([ExtResource("crayon1"), ExtResource("crayon2"), ExtResource("crayon3")])

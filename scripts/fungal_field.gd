@@ -4,18 +4,20 @@ extends Node2D
 ## 外部传入连接快照；本节点只管理覆盖扩张、断连残影和采集候选查询。
 ## 候选节点互为替代者，不代表多个资源所有者；查询不会领取或修改资源。
 
-const FILL_COLOR: Color = Color(0.075, 0.19, 0.155, 1.0)
-const BOUNDARY_COLOR: Color = Color(0.22, 0.43, 0.33, 0.85)
+const FILL_COLOR: Color = Color(0.82, 0.86, 0.72, 1.0)
+const BOUNDARY_COLOR: Color = Color(0.40, 0.52, 0.35, 0.85)
 const BOUNDARY_WIDTH: float = 1.5
 const CIRCLE_STEPS: int = 96
 const ARC_EPSILON: float = 0.00001
 const DISCONNECT_GRACE_SECONDS: float = 5.0
 const DECAY_SECONDS: float = 10.0
 const BRIGHTNESS_RECOVERY_SPEED: float = 0.5
-const REMNANT_FILL_COLOR: Color = Color(0.13, 0.13, 0.13, 0.7)
-const REMNANT_BOUNDARY_COLOR: Color = Color(0.48, 0.48, 0.48, 0.8)
+const REMNANT_FILL_COLOR: Color = Color(0.73, 0.71, 0.67, 0.32)
+const REMNANT_BOUNDARY_COLOR: Color = Color(0.49, 0.46, 0.43, 0.8)
 const REMNANT_DASH_STEPS: int = 48
 const REMNANT_DASH_RATIO: float = 0.55
+
+@export var flower_textures: Array[Texture2D] = []
 
 @export var core_radius: float = 140.0:
 	set(value):
@@ -71,9 +73,10 @@ func _draw() -> void:
 		var radius: float = disc["radius"]
 		# 不透明填充不会叠加亮度；暗盘先画以保留更亮的重叠覆盖。
 		var brightness: float = disc["brightness"]
-		var fill: Color = Color(FILL_COLOR.r * brightness, FILL_COLOR.g * brightness,
-			FILL_COLOR.b * brightness, FILL_COLOR.a)
+		var fill: Color = Color("e8e2d6").lerp(FILL_COLOR, brightness)
 		draw_circle(center, radius, fill, true, -1.0, true)
+
+	_draw_flowers(discs)
 
 	for index: int in range(discs.size()):
 		var disc: Dictionary = discs[index]
@@ -86,6 +89,33 @@ func _draw() -> void:
 			var point_count: int = maxi(2, int(ceil((arc.y - arc.x) / TAU * CIRCLE_STEPS)) + 1)
 			draw_arc(center, radius, arc.x, arc.y, point_count,
 				boundary, BOUNDARY_WIDTH, true)
+
+
+## 花簇只落在有效菌域内部；固定网格和偏移不消耗玩法随机数，也不改变覆盖查询。
+func _draw_flowers(discs: Array[Dictionary]) -> void:
+	if flower_textures.is_empty() or discs.is_empty():
+		return
+	var bounds := Rect2(discs[0]["center"], Vector2.ZERO)
+	for disc in discs:
+		var radius: float = disc["radius"]
+		bounds = bounds.merge(Rect2(disc["center"] - Vector2.ONE * radius, Vector2.ONE * radius * 2.0))
+	const SPACING: float = 60.0
+	for y in range(floori(bounds.position.y / SPACING), ceili(bounds.end.y / SPACING) + 1):
+		for x in range(floori(bounds.position.x / SPACING), ceili(bounds.end.x / SPACING) + 1):
+			var seed_value := absi(hash(Vector2i(x, y)))
+			var point := Vector2(x, y) * SPACING + Vector2(seed_value % 17 - 8, (seed_value / 17) % 17 - 8)
+			var brightness: float = 0.0
+			for disc in discs:
+				if point.distance_to(disc["center"]) + 24.0 <= float(disc["radius"]):
+					brightness = maxf(brightness, float(disc["brightness"]))
+			if brightness <= 0.0:
+				continue
+			var image := flower_textures[seed_value % flower_textures.size()]
+			if image == null:
+				continue
+			var size := image.get_size()
+			var scaled_size := size * minf(34.0 / size.x, 30.0 / size.y)
+			draw_texture_rect(image, Rect2(point - scaled_size * 0.5, scaled_size), false, Color(1, 1, 1, 0.64 * brightness))
 
 
 ## 替换快照；同一节点的首个有效记录生效，后续重复记录忽略。

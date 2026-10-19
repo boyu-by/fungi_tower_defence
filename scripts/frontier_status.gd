@@ -85,9 +85,9 @@ func _draw() -> void:
 			if point.x > 730.0 and point.y < 360.0:
 				point.y = 360.0
 			caption = "胃囊" if node is DigestiveOrgan else ("芽" if node is OrganBud else "器官")
-		var color: Color = Color("e98272") if hp < maximum else Color("b2ceb7")
+		var color: Color = Color("ad5546") if hp < maximum else Color("54674d")
 		if caption == "失联" or caption == "枯结":
-			color = Color("e8a06d")
+			color = Color("9a683d")
 		draw_string(_font, to_local(point), "%s %.0f/%.0f" % [caption, hp, maximum], HORIZONTAL_ALIGNMENT_LEFT, -1.0, 11, color)
 	for enemy: Node in level.get_node("World/Enemies").get_children():
 		if not enemy is BasicEnemy or not enemy.is_alive():

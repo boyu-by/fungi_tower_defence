@@ -1,16 +1,22 @@
 extends Node
 ## 只读消化快照；时间、输入占有和产物生成均由 DigestiveOrgan 管理。
 
+const IDLE_ART: Texture2D = preload("res://resources/art/textures/digest_idle.tres")
+const WORK_ART_1: Texture2D = preload("res://resources/art/textures/digest_work_1.tres")
+const WORK_ART_2: Texture2D = preload("res://resources/art/textures/digest_work_2.tres")
+const ART_BOUNDS := Vector2(68, 76)
+const FRAME_DURATION: float = 0.16
+
 const IDLE_CAP_COLOR := Color(0.53, 0.32, 0.52, 1.0)
 const DORMANT_CAP_COLOR := Color(0.38, 0.31, 0.41, 1.0)
 const PROCESSING_CAP_COLOR := Color(0.72, 0.40, 0.67, 1.0)
 const BLOCKED_CAP_COLOR := Color(0.67, 0.43, 0.29, 1.0)
 const TOO_LARGE_CAP_COLOR := Color(0.63, 0.31, 0.39, 1.0)
 const STOPPED_CAP_COLOR := Color(0.36, 0.32, 0.38, 1.0)
-const NORMAL_TEXT_COLOR := Color(0.91, 0.84, 0.92, 1.0)
-const WORKING_TEXT_COLOR := Color(0.94, 0.83, 0.58, 1.0)
-const BLOCKED_TEXT_COLOR := Color(1.0, 0.70, 0.43, 1.0)
-const STOPPED_TEXT_COLOR := Color(0.64, 0.62, 0.66, 1.0)
+const NORMAL_TEXT_COLOR := Color("594e61")
+const WORKING_TEXT_COLOR := Color("95712c")
+const BLOCKED_TEXT_COLOR := Color("ad623e")
+const STOPPED_TEXT_COLOR := Color("817981")
 const MIN_EXPANSION_SCALE := 0.08
 
 var _organ: DigestiveOrgan
@@ -21,6 +27,7 @@ var _queue_label_center_offset: float = 0.0
 @onready var _primary_status: Label = get_parent().get_node("ChamberStatus") as Label
 @onready var _primary_cap: Polygon2D = get_parent().get_node("Cap") as Polygon2D
 @onready var _primary_pores: Line2D = get_parent().get_node("Pores") as Line2D
+@onready var _primary_sprite: Sprite2D = get_parent().get_node("ArtSprite") as Sprite2D
 @onready var _queue_label: Label = get_parent().get_node("QueueLabel") as Label
 @onready var _second_chamber: Node2D = get_parent().get_node("SecondChamber") as Node2D
 @onready var _second_body: Node2D = get_parent().get_node("SecondChamber/Body") as Node2D
@@ -28,6 +35,7 @@ var _queue_label_center_offset: float = 0.0
 @onready var _second_status: Label = get_parent().get_node("SecondChamber/StateLabel") as Label
 @onready var _second_cap: Polygon2D = get_parent().get_node("SecondChamber/Body/Cap") as Polygon2D
 @onready var _second_pores: Line2D = get_parent().get_node("SecondChamber/Body/Pores") as Line2D
+@onready var _second_sprite: Sprite2D = get_parent().get_node("SecondChamber/Body/ArtSprite") as Sprite2D
 
 
 func _enter_tree() -> void:
@@ -98,12 +106,14 @@ func _render_snapshot(snapshot: Dictionary, output: Dictionary) -> void:
 	_primary_progress.value = clampf(float(primary["progress"]), 0.0, 1.0)
 	_primary_cap.color = _cap_color(primary)
 	_primary_pores.default_color = _primary_cap.color.lightened(0.30)
+	_render_chamber_art(_primary_sprite, primary)
 
 	_second_chamber.visible = is_expanding or has_two_chambers
 	_second_progress.value = clampf(float(secondary["progress"]), 0.0, 1.0)
 	_second_progress.visible = has_two_chambers
 	_second_cap.color = _cap_color(secondary)
 	_second_pores.default_color = _second_cap.color.lightened(0.30)
+	_render_chamber_art(_second_sprite, secondary)
 	_second_status.modulate = _text_color(secondary)
 	if is_expanding:
 		var progress: float = clampf(float(snapshot["expansion_progress"]), 0.0, 1.0)
@@ -132,6 +142,20 @@ func _render_snapshot(snapshot: Dictionary, output: Dictionary) -> void:
 	] else NORMAL_TEXT_COLOR
 
 
+func _render_chamber_art(sprite: Sprite2D, chamber: Dictionary) -> void:
+	var state: StringName = StringName(chamber["state"])
+	var image: Texture2D = IDLE_ART
+	if state == &"processing":
+		# 动画取真实消化计时进度：暂停后不会因为现实时间经过而自行跳帧。
+		var elapsed: float = maxf(float(chamber["duration"]) - float(chamber["remaining"]), 0.0)
+		image = WORK_ART_1 if int(elapsed / FRAME_DURATION) % 2 == 0 else WORK_ART_2
+	if sprite.texture != image:
+		WorldArt.fit_sprite(sprite, image, ART_BOUNDS)
+	sprite.modulate = Color(0.78, 0.75, 0.77) if state in [
+		&"dormant", &"stopped", &"locked", &"host_paused"
+	] else Color.WHITE
+
+
 func _state_text(chamber: Dictionary) -> String:
 	var state: StringName = StringName(chamber["state"])
 	match state:
@@ -145,6 +169,8 @@ func _state_text(chamber: Dictionary) -> String:
 			return "输入过大"
 		&"stopped":
 			return "已停止"
+		&"host_paused":
+			return "菌结停摆"
 		&"locked":
 			return "尚未解锁"
 		&"expanding":

@@ -1,6 +1,16 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/organ_bud.gd" id="1_bud"]
+[ext_resource type="Script" path="res://scripts/visuals/colony_bud_art.gd" id="art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/node_idle.tres" id="bud"]
 
 [node name="OrganBud" type="Node2D"]
 script = ExtResource("1_bud")
+
+[node name="ArtView" type="Node2D" parent="."]
+script = ExtResource("art_view")
+
+[node name="Sprite2D" type="Sprite2D" parent="ArtView"]
+position = Vector2(0, -13)
+scale = Vector2(0.11715, 0.11715)
+texture = ExtResource("bud")

@@ -1,6 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/terrain_rock.gd" id="1_rock"]
+[ext_resource type="Script" path="res://scripts/visuals/resource_art_view.gd" id="2_art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_obstacle.tres" id="3_art"]
 
 [sub_resource type="RectangleShape2D" id="Rock_shape"]
 size = Vector2(96, 80)
@@ -12,3 +14,10 @@ script = ExtResource("1_rock")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("Rock_shape")
+
+[node name="Art" type="Sprite2D" parent="."]
+position = Vector2(0, -4)
+scale = Vector2(0.22, 0.22)
+texture = ExtResource("3_art")
+script = ExtResource("2_art_view")
+kind = 4

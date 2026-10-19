@@ -118,7 +118,13 @@ func show_continue(caption: String) -> void:
 		return
 	result_continue_button.text = caption
 	result_continue_button.visible = _has_result and bool(_result_snapshot.get("victory", false))
-	result_restart_button.position.x = 90.0 if result_continue_button.visible else 200.0
+	_layout_result_actions()
+
+
+func _layout_result_actions() -> void:
+	var width: float = result_restart_button.size.x
+	result_restart_button.position.x = (result_panel.size.x - width * 2 - 20) * 0.5 if result_continue_button.visible else (result_panel.size.x - width) * 0.5
+	result_continue_button.position.x = result_restart_button.position.x + width + 20
 
 
 func is_pointer_over_panel(point: Vector2) -> bool:
@@ -208,7 +214,7 @@ func _render_result() -> void:
 		return
 	var victory: bool = bool(_result_snapshot.get("victory", false))
 	result_title.text = "守住菌落 · 首关胜利" if victory else "本次挑战失败"
-	result_title.modulate = Color(0.75, 1.0, 0.8) if victory else Color(1.0, 0.75, 0.6)
+	result_title.modulate = Color.WHITE
 	result_subtitle.text = "六波均已清空 · 本局数据如下" if victory else "回到初始准备，调整布局后再次挑战"
 	result_left_label.text = "到达波次：%d / %d\n完成波次：%d / %d\n累计回收：%d 营养\n成长阶段：%s" % [
 		int(_result_snapshot.get("reached_wave", 0)), WAVE_TOTAL,

@@ -20,6 +20,16 @@ func configure(level: Node2D) -> void:
 	if _configured:
 		return
 	_level = level
+	ArtUI.skin_tree(overlay)
+	ArtUI.menu_button(resume_button, "继续游戏")
+	ArtUI.menu_button(restart_button, "重新开始")
+	ArtUI.menu_button(quit_button, "退出游戏")
+	ArtUI.typography($Overlay/Center/Panel/Buttons/Title, 38, true)
+	ArtUI.typography($Overlay/Center/Panel/Buttons/Hint, 20)
+	$Overlay/Center/Panel/Buttons/Hint.text = "已解锁的关卡进度会保留。\n当前布局与战斗进度不会保留。"
+	$Overlay/Center/Panel/Buttons/Hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ArtUI.typography($Overlay/Center/Panel/Buttons/KeyboardHint, 20)
+	title_button.custom_minimum_size.y = 54
 	_navigator = get_node_or_null("/root/CampaignFlow") as CampaignNavigator
 	resume_button.pressed.connect(close_menu)
 	restart_button.pressed.connect(_restart)
@@ -28,21 +38,49 @@ func configure(level: Node2D) -> void:
 	_level.level_finished.connect(_on_level_finished)
 	var row := HBoxContainer.new()
 	row.name = "NavigationButtons"
-	row.position = Vector2(24, 330)
-	row.size = Vector2(552, 44)
+	row.position = Vector2(56, 510)
+	row.size = Vector2(600, 72)
 	row.add_theme_constant_override("separation", 12)
 	row.theme = preload("res://resources/ui/menu_theme.tres")
-	_level.flow_hud.result_panel.size.y = 394
+	_level.flow_hud.result_panel.size = Vector2(712, 680)
+	get_viewport().size_changed.connect(_layout_result_panel)
+	_layout_result_panel.call_deferred()
 	for button: Button in [_level.flow_hud.result_restart_button, _level.flow_hud.result_continue_button]:
 		button.theme = row.theme
-		button.custom_minimum_size.y = 48
-		button.size.y = 48
+		button.custom_minimum_size = Vector2(230, 72)
+		button.size = Vector2(230, 72)
+		button.position.y = 414
 	_level.flow_hud.result_panel.add_child(row)
 	result_title_button = _result_button(row, "返回主菜单", _return_to_title)
 	result_quit_button = _result_button(row, "退出游戏", _quit)
+	ArtUI.skin_tree(_level.flow_hud.result_panel)
+	var hud: FirstLevelHUD = _level.flow_hud
+	ArtUI.typography(hud.result_title, 34, true)
+	hud.result_title.position = Vector2(56, 80)
+	hud.result_title.size = Vector2(600, 50)
+	ArtUI.typography(hud.result_subtitle, 22)
+	hud.result_subtitle.position = Vector2(56, 142)
+	hud.result_subtitle.size = Vector2(600, 38)
+	for index: int in range(2):
+		var label: Label = hud.result_left_label if index == 0 else hud.result_right_label
+		ArtUI.typography(label, 22)
+		label.position = Vector2(56 + index * 320, 208)
+		label.size = Vector2(280, 140)
+		label.add_theme_constant_override("line_spacing", 6)
+	var hint: Label = hud.result_panel.get_node("RestartHint")
+	ArtUI.typography(hint, 20)
+	hint.position = Vector2(56, 370)
+	hint.size = Vector2(600, 32)
+	_level.level_finished.connect(_skin_result)
 	if is_instance_valid(_navigator):
 		_navigator.bind_level(_level)
 	_configured = true
+
+
+func _layout_result_panel() -> void:
+	if is_inside_tree() and is_instance_valid(_level) and is_instance_valid(get_viewport()):
+		var panel: Control = _level.flow_hud.result_panel
+		panel.position = (get_viewport().get_visible_rect().size - panel.size) * 0.5
 
 
 func _result_button(parent: Node, caption: String, callback: Callable) -> Button:
@@ -63,6 +101,7 @@ func open_menu() -> void:
 	_level.pause_controller.set_menu_active(true)
 	_level.pause_controller.set_paused(true)
 	resume_button.text = "返回暂停规划" if _was_paused else "继续游戏"
+	resume_button.tooltip_text = resume_button.text
 	overlay.show()
 	resume_button.grab_focus()
 
@@ -113,3 +152,10 @@ func _quit() -> void:
 func _on_level_finished(_snapshot: Dictionary) -> void:
 	overlay.hide()
 	_level.pause_controller.set_menu_active(false)
+
+
+func _skin_result(snapshot: Dictionary) -> void:
+	var failed: bool = not bool(snapshot.get("victory", false))
+	ArtUI.menu_button(_level.flow_hud.result_restart_button, "重新开始", failed, Vector2(230, 72))
+	ArtUI.menu_button(result_quit_button, "退出游戏", failed, Vector2(230, 72))
+	_level.flow_hud._layout_result_actions()

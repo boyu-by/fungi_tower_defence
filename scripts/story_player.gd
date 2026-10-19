@@ -23,14 +23,14 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 100
 	var backdrop := ColorRect.new()
-	backdrop.color = Color("101d19")
+	backdrop.color = Color("e7dfd2")
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(backdrop)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side: String in ["left", "right", "top", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 32)
-	margin.theme = load("res://resources/ui/menu_theme.tres")
+	margin.theme = ArtUI.theme(22)
 	backdrop.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 16)
@@ -38,7 +38,7 @@ func _ready() -> void:
 	var title := Label.new()
 	title.text = sequence.title
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 30)
+	ArtUI.typography(title, 38, true)
 	column.add_child(title)
 	_image = TextureRect.new()
 	_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -49,8 +49,11 @@ func _ready() -> void:
 	caption.text = sequence.caption
 	caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	caption.add_theme_font_size_override("font_size", 23)
-	column.add_child(caption)
+	ArtUI.typography(caption, 26)
+	var dialogue := PanelContainer.new()
+	dialogue.add_theme_stylebox_override("panel", ArtUI.paper(ArtUI.UI + "对话框.png", 24))
+	column.add_child(dialogue)
+	dialogue.add_child(caption)
 	_counter = Label.new()
 	_counter.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(_counter)
@@ -66,7 +69,7 @@ func _ready() -> void:
 func _button(row: HBoxContainer, text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(160, 48)
+	button.custom_minimum_size = Vector2(180, 54)
 	button.pressed.connect(callback)
 	row.add_child(button)
 	return button

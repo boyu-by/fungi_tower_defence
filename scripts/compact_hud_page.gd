@@ -16,8 +16,8 @@ func _init() -> void:
 
 func heading(caption: String) -> Label:
 	var label: Label = text(caption)
-	label.add_theme_color_override("font_color", Color("c7d9a2"))
-	label.add_theme_font_size_override("font_size", 15)
+	label.add_theme_color_override("font_color", ArtUI.INK)
+	ArtUI.typography(label, 24, true)
 	return label
 
 
@@ -52,8 +52,11 @@ func action(caption: String, callback: Callable, parent: Node = null,
 		mutates: bool = false) -> Button:
 	var button := Button.new()
 	button.text = caption
+	button.clip_text = true
+	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	button.tooltip_text = caption
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size.y = 38
+	button.custom_minimum_size.y = 48
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(callback)
 	(self if parent == null else parent).add_child(button)
@@ -106,7 +109,7 @@ func refresh() -> void:
 		var source: Button = binding.source
 		var target: Button = binding.target
 		target.text = source.text
-		target.tooltip_text = source.tooltip_text
+		target.tooltip_text = source.tooltip_text if not source.tooltip_text.is_empty() else source.text
 		target.disabled = source.disabled or (binding.mutates and paused)
 	for button: Button in mutation_buttons:
 		button.disabled = paused

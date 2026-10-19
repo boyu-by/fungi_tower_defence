@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://d3dehambiamu6"
+path="res://.godot/imported/jingles_HIT15.ogg-404899e49c0bd8bdf9afccb52db0771e.oggvorbisstr"
+
+[deps]
+
+source_file="res://assets/kenney_music-jingles/Audio/Hit jingles/jingles_HIT15.ogg"
+dest_files=["res://.godot/imported/jingles_HIT15.ogg-404899e49c0bd8bdf9afccb52db0771e.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

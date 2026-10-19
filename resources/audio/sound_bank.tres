@@ -1,0 +1,257 @@
+[gd_resource type="Resource" script_class="SoundBank" format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/sound_bank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://scripts/audio/sound_cue.gd" id="2_cue"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/ui_click.ogg" id="s_0"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/ui_cancel.ogg" id="s_1"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/ui_confirm.ogg" id="s_2"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/income.ogg" id="s_3"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/hit_01.ogg" id="s_4"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/hit_02.ogg" id="s_5"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/death.ogg" id="s_6"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/core_hit.ogg" id="s_7"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/shoot_01.ogg" id="s_8"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/shoot_02.ogg" id="s_9"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/shoot_heavy.ogg" id="s_10"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/shoot_scatter.ogg" id="s_11"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/grow.ogg" id="s_12"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/stage.ogg" id="s_13"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/evolve.ogg" id="s_14"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/victory.ogg" id="s_15"]
+[ext_resource type="AudioStreamOggVorbis" path="res://assets/audio/sfx/defeat.ogg" id="s_16"]
+[ext_resource type="AudioStreamMP3" path="res://assets/audio/sfx/paper.mp3" id="s_17"]
+
+[sub_resource type="Resource" id="Cue_ui_click"]
+script = ExtResource("2_cue")
+id = &"ui_click"
+streams = Array[AudioStream]([ExtResource("s_0")])
+channel = 0
+volume_db = -18.0
+pitch_min = 0.97
+pitch_max = 1.03
+cooldown = 0.08
+max_voices = 2
+priority = 0
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_ui_cancel"]
+script = ExtResource("2_cue")
+id = &"ui_cancel"
+streams = Array[AudioStream]([ExtResource("s_1")])
+channel = 0
+volume_db = -18.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 0.12
+max_voices = 1
+priority = 0
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_place"]
+script = ExtResource("2_cue")
+id = &"place"
+streams = Array[AudioStream]([ExtResource("s_17")])
+channel = 1
+volume_db = -4.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 0.18
+max_voices = 1
+priority = 2
+duration_limit = 0.18
+
+[sub_resource type="Resource" id="Cue_shoot"]
+script = ExtResource("2_cue")
+id = &"shoot"
+streams = Array[AudioStream]([ExtResource("s_8"), ExtResource("s_9")])
+channel = 1
+volume_db = -27.0
+pitch_min = 0.94
+pitch_max = 1.06
+cooldown = 0.06
+max_voices = 2
+priority = 0
+duration_limit = 0.23
+
+[sub_resource type="Resource" id="Cue_shoot_heavy"]
+script = ExtResource("2_cue")
+id = &"shoot_heavy"
+streams = Array[AudioStream]([ExtResource("s_10")])
+channel = 1
+volume_db = -24.0
+pitch_min = 0.76
+pitch_max = 0.82
+cooldown = 0.12
+max_voices = 2
+priority = 1
+duration_limit = 0.32
+
+[sub_resource type="Resource" id="Cue_shoot_scatter"]
+script = ExtResource("2_cue")
+id = &"shoot_scatter"
+streams = Array[AudioStream]([ExtResource("s_11")])
+channel = 1
+volume_db = -27.0
+pitch_min = 1.1
+pitch_max = 1.16
+cooldown = 0.12
+max_voices = 2
+priority = 0
+duration_limit = 0.22
+
+[sub_resource type="Resource" id="Cue_hit"]
+script = ExtResource("2_cue")
+id = &"hit"
+streams = Array[AudioStream]([ExtResource("s_4"), ExtResource("s_5")])
+channel = 1
+volume_db = -23.0
+pitch_min = 0.95
+pitch_max = 1.05
+cooldown = 0.07
+max_voices = 2
+priority = 1
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_death"]
+script = ExtResource("2_cue")
+id = &"death"
+streams = Array[AudioStream]([ExtResource("s_6")])
+channel = 1
+volume_db = -21.0
+pitch_min = 0.9
+pitch_max = 1.05
+cooldown = 0.16
+max_voices = 1
+priority = 2
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_grow"]
+script = ExtResource("2_cue")
+id = &"grow"
+streams = Array[AudioStream]([ExtResource("s_12")])
+channel = 1
+volume_db = -25.0
+pitch_min = 1.08
+pitch_max = 1.15
+cooldown = 0.35
+max_voices = 1
+priority = 1
+duration_limit = 0.3
+
+[sub_resource type="Resource" id="Cue_built"]
+script = ExtResource("2_cue")
+id = &"built"
+streams = Array[AudioStream]([ExtResource("s_2")])
+channel = 1
+volume_db = -17.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 0.35
+max_voices = 1
+priority = 5
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_income"]
+script = ExtResource("2_cue")
+id = &"income"
+streams = Array[AudioStream]([ExtResource("s_3")])
+channel = 1
+volume_db = -25.0
+pitch_min = 1.08
+pitch_max = 1.12
+cooldown = 0.45
+max_voices = 1
+priority = 2
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_core_hit"]
+script = ExtResource("2_cue")
+id = &"core_hit"
+streams = Array[AudioStream]([ExtResource("s_7")])
+channel = 1
+volume_db = -14.0
+pitch_min = 0.9
+pitch_max = 0.9
+cooldown = 0.8
+max_voices = 1
+priority = 10
+duration_limit = 0
+
+[sub_resource type="Resource" id="Cue_stage"]
+script = ExtResource("2_cue")
+id = &"stage"
+streams = Array[AudioStream]([ExtResource("s_13")])
+channel = 2
+volume_db = -16.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 1
+max_voices = 1
+priority = 5
+duration_limit = 1.5
+
+[sub_resource type="Resource" id="Cue_evolve"]
+script = ExtResource("2_cue")
+id = &"evolve"
+streams = Array[AudioStream]([ExtResource("s_14")])
+channel = 2
+volume_db = -16.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 0.7
+max_voices = 1
+priority = 5
+duration_limit = 1.5
+
+[sub_resource type="Resource" id="Cue_victory"]
+script = ExtResource("2_cue")
+id = &"victory"
+streams = Array[AudioStream]([ExtResource("s_15")])
+channel = 2
+volume_db = -13.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 1
+max_voices = 1
+priority = 10
+duration_limit = 2.5
+
+[sub_resource type="Resource" id="Cue_defeat"]
+script = ExtResource("2_cue")
+id = &"defeat"
+streams = Array[AudioStream]([ExtResource("s_16")])
+channel = 2
+volume_db = -15.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 1
+max_voices = 1
+priority = 10
+duration_limit = 2.5
+
+[sub_resource type="Resource" id="Cue_paper"]
+script = ExtResource("2_cue")
+id = &"paper"
+streams = Array[AudioStream]([ExtResource("s_17")])
+channel = 0
+volume_db = -3.0
+pitch_min = 1
+pitch_max = 1
+cooldown = 0.18
+max_voices = 1
+priority = 2
+duration_limit = 0.45
+
+[sub_resource type="Resource" id="Cue_fragment"]
+script = ExtResource("2_cue")
+id = &"fragment"
+streams = Array[AudioStream]([ExtResource("s_2")])
+channel = 2
+volume_db = -15.0
+cooldown = 0.5
+max_voices = 1
+priority = 6
+
+[resource]
+script = ExtResource("1_bank")
+cues = Array[ExtResource("2_cue")]([SubResource("Cue_ui_click"), SubResource("Cue_ui_cancel"), SubResource("Cue_place"), SubResource("Cue_shoot"), SubResource("Cue_shoot_heavy"), SubResource("Cue_shoot_scatter"), SubResource("Cue_hit"), SubResource("Cue_death"), SubResource("Cue_grow"), SubResource("Cue_built"), SubResource("Cue_income"), SubResource("Cue_core_hit"), SubResource("Cue_stage"), SubResource("Cue_evolve"), SubResource("Cue_victory"), SubResource("Cue_defeat"), SubResource("Cue_paper"), SubResource("Cue_fragment")])

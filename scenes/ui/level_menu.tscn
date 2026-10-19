@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/level_menu_layer.gd" id="1_menu"]
 [ext_resource type="Theme" path="res://resources/ui/menu_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://scenes/audio/audio_volume_control.tscn" id="3_volume"]
 
 [node name="LevelMenu" type="CanvasLayer"]
 layer = 40
@@ -69,3 +70,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Esc 返回游戏"
 horizontal_alignment = 1
+
+[node name="AudioVolume" parent="Overlay/Center/Panel/Buttons" instance=ExtResource("3_volume")]
+layout_mode = 2

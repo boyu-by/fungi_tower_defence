@@ -2,6 +2,8 @@ class_name SporeProjectile
 extends Node2D
 ## 一发孢子追踪发射时选定的目标；目标消失则消散，不重新寻找目标。
 
+signal hit(enemy: BasicEnemy, actual_damage: int)
+
 @export_range(1.0, 1200.0, 1.0) var speed: float = 360.0
 
 var target: BasicEnemy
@@ -89,12 +91,14 @@ func _physics_process(delta: float) -> void:
 		# 先阻止重入命中，但保留承诺直到受伤入口的所有同步回调返回。
 		_finished = true
 		_settling_damage = true
-		target.apply_damage({
+		var actual_damage := target.apply_damage({
 			"raw_damage": _raw_damage,
 			"damage_type": _damage_type,
 		})
 		_settling_damage = false
 		_release_damage_commitment()
+		if actual_damage > 0:
+			hit.emit(target, actual_damage)
 		if not is_queued_for_deletion():
 			queue_free()
 	else:

@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/gameplay/colony_level_runtime.gd" id="1_i2aat"]
+[ext_resource type="PackedScene" path="res://scenes/audio/game_audio.tscn" id="audio_feedback"]
 [ext_resource type="PackedScene" uid="uid://bpmj7to36nssq" path="res://scenes/colony/mother_core.tscn" id="1_m802k"]
 
 [ext_resource type="PackedScene" path="res://scenes/systems/supply_system.tscn" id="6_supply"]
@@ -142,6 +143,8 @@ traffic_system = NodePath("../NetworkTrafficSystem")
 traffic_required = true
 
 [node name="HUD" parent="." instance=ExtResource("7_hud")]
+
+[node name="GameAudio" parent="." instance=ExtResource("audio_feedback")]
 
 [node name="ConstructionQueue" parent="HUD" node_paths=PackedStringArray("coordinator", "marker_container") instance=ExtResource("35_queue_ui")]
 coordinator = NodePath("../../Systems/ConstructionCoordinator")

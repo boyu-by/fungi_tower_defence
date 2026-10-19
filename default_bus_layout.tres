@@ -1,0 +1,19 @@
+[gd_resource type="AudioBusLayout" format=3]
+
+[resource]
+
+bus/0/name = &"Master"
+bus/0/solo = false
+bus/0/mute = false
+bus/0/bypass_fx = false
+bus/0/volume_db = -2.0
+bus/0/send = &""
+bus/1/name = &"Effects"
+bus/1/volume_db = -3.098
+bus/1/send = &"Master"
+bus/2/name = &"UI"
+bus/2/send = &"Effects"
+bus/3/name = &"World"
+bus/3/send = &"Effects"
+bus/4/name = &"Stinger"
+bus/4/send = &"Effects"

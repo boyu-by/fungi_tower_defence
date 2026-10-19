@@ -1,5 +1,5 @@
 extends Sprite2D
-## 母核以完整花簇呈现；生命条与营养仍由 MotherCore 管理。
+## 小画家代表母核；生命条与营养仍由 MotherCore 管理。
 
 @export var display_bounds: Vector2 = Vector2(106, 104)
 

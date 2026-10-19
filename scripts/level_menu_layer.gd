@@ -23,13 +23,13 @@ func configure(level: Node2D) -> void:
 	ArtUI.skin_tree(overlay)
 	ArtUI.menu_button(resume_button, "继续游戏")
 	ArtUI.menu_button(restart_button, "重新开始")
+	ArtUI.menu_button(title_button, "返回主菜单")
 	ArtUI.menu_button(quit_button, "退出游戏")
 	ArtUI.typography($Overlay/Center/Panel/Buttons/Title, 38, true)
 	ArtUI.typography($Overlay/Center/Panel/Buttons/Hint, 20)
 	$Overlay/Center/Panel/Buttons/Hint.text = "已解锁的关卡进度会保留。\n当前布局与战斗进度不会保留。"
 	$Overlay/Center/Panel/Buttons/Hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	ArtUI.typography($Overlay/Center/Panel/Buttons/KeyboardHint, 20)
-	title_button.custom_minimum_size.y = 54
 	_navigator = get_node_or_null("/root/CampaignFlow") as CampaignNavigator
 	resume_button.pressed.connect(close_menu)
 	restart_button.pressed.connect(_restart)
@@ -40,7 +40,8 @@ func configure(level: Node2D) -> void:
 	row.name = "NavigationButtons"
 	row.position = Vector2(56, 510)
 	row.size = Vector2(600, 72)
-	row.add_theme_constant_override("separation", 12)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 20)
 	row.theme = preload("res://resources/ui/menu_theme.tres")
 	_level.flow_hud.result_panel.size = Vector2(712, 680)
 	get_viewport().size_changed.connect(_layout_result_panel)
@@ -54,6 +55,8 @@ func configure(level: Node2D) -> void:
 	result_title_button = _result_button(row, "返回主菜单", _return_to_title)
 	result_quit_button = _result_button(row, "退出游戏", _quit)
 	ArtUI.skin_tree(_level.flow_hud.result_panel)
+	ArtUI.menu_button(result_title_button, "返回主菜单", false, Vector2(230, 72))
+	ArtUI.menu_button(_level.flow_hud.result_continue_button, "进入下一关", false, Vector2(230, 72))
 	var hud: FirstLevelHUD = _level.flow_hud
 	ArtUI.typography(hud.result_title, 34, true)
 	hud.result_title.position = Vector2(56, 80)
@@ -158,4 +161,6 @@ func _skin_result(snapshot: Dictionary) -> void:
 	var failed: bool = not bool(snapshot.get("victory", false))
 	ArtUI.menu_button(_level.flow_hud.result_restart_button, "重新开始", failed, Vector2(230, 72))
 	ArtUI.menu_button(result_quit_button, "退出游戏", failed, Vector2(230, 72))
+	# 图上共用“进入下一关”，提示仍保留进入第二／三关的实际目标。
+	_level.flow_hud.result_continue_button.tooltip_text = _level.flow_hud.result_continue_button.text
 	_level.flow_hud._layout_result_actions()

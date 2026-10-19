@@ -5,13 +5,17 @@ extends Resource
 @export_range(1, 3) var chapter: int = 1
 @export var large_resource: Texture2D
 @export var remains: Texture2D
+@export var normal_remains: Texture2D
 @export var obstacle: Texture2D
 @export var nutrients: Array[Texture2D] = []
 @export var enemy_normal: Texture2D
 @export var enemy_armored: Texture2D
 @export var enemy_swarm: Texture2D
 @export var enemy_gnawer: Texture2D
+@export var enemy_walk_frames: Array[Texture2D] = []
 @export var enemy_hit: Texture2D
+@export var enemy_armored_hit: Texture2D
 @export var enemy_dead: Texture2D
+@export var enemy_shared_states: bool = false
 @export var facility_idle: Texture2D
 @export var facility_damaged: Texture2D

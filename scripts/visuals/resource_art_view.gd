@@ -60,9 +60,9 @@ func _select_texture() -> Texture2D:
 		Kind.REMAINS:
 			# 只读生成方提供的美术种类，避免地形贴图反向依赖敌人和导航脚本。
 			# 开采批次、未标记尸体始终使用通用碎片。
-			if _theme.enemy_dead != null and not get_parent().has_meta("carcass_batch_id") \
+			if _theme.normal_remains != null and not get_parent().has_meta("carcass_batch_id") \
 				and StringName(get_parent().get_meta(&"art_remains_kind", &"generic")) == &"camera":
-				return _theme.enemy_dead
+				return _theme.normal_remains
 			return _theme.remains
 		Kind.REMAINS_PACKET:
 			return _theme.remains

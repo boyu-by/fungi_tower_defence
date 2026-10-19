@@ -1,23 +1,24 @@
 [gd_scene format=3 uid="uid://bpmj7to36nssq"]
 
 [ext_resource type="Script" uid="uid://0x4kj1c8kmij" path="res://scripts/mother_core.gd" id="1_rug6g"]
-[ext_resource type="Texture2D" path="res://resources/art/textures/flower_5.tres" id="2_ua3di"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/core_painter.tres" id="2_ua3di"]
 [ext_resource type="Script" path="res://scripts/visuals/colony_core_art.gd" id="core_art"]
 
 [node name="MotherCore" type="Node2D" unique_id=1235887925]
 script = ExtResource("1_rug6g")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=789794938]
-position = Vector2(0, -52)
-scale = Vector2(0.33227, 0.33227)
+position = Vector2(0, -58)
+scale = Vector2(0.136954, 0.136954)
 texture = ExtResource("2_ua3di")
 script = ExtResource("core_art")
+display_bounds = Vector2(96, 116)
 
 [node name="HealthBar" type="ProgressBar" parent="." unique_id=726205919]
 offset_left = -40.0
-offset_top = -118.0
+offset_top = -130.0
 offset_right = 40.0
-offset_bottom = -110.0
+offset_bottom = -122.0
 mouse_filter = 2
 max_value = 240.0
 value = 240.0

@@ -1,6 +1,8 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/nutrient_packet.gd" id="1_packet"]
+[ext_resource type="Script" path="res://scripts/visuals/resource_art_view.gd" id="2_art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_1.tres" id="3_art"]
 
 [node name="NutrientPacket" type="Node2D"]
 z_index = -1
@@ -19,9 +21,20 @@ color = Color(0.96, 0.80, 0.40, 0.16)
 polygon = PackedVector2Array(-9, -4, -4, -9, 4, -9, 9, -4, 9, 4, 4, 9, -4, 9, -9, 4)
 
 [node name="Body" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.96, 0.80, 0.40, 1)
 polygon = PackedVector2Array(-6, 0, 0, -5, 6, 0, 0, 5)
 
 [node name="Center" type="Polygon2D" parent="."]
+visible = false
 color = Color(1, 0.98, 0.81, 1)
 polygon = PackedVector2Array(-2, 0, 0, -2, 2, 0, 0, 2)
+
+[node name="Art" type="Sprite2D" parent="."]
+scale = Vector2(0.067, 0.067)
+texture = ExtResource("3_art")
+script = ExtResource("2_art_view")
+kind = 3
+art_bounds = Vector2(23, 28)
+grounded = false
+fallback_paths = Array[NodePath]([NodePath("../Body"), NodePath("../Center")])

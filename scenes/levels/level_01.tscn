@@ -27,7 +27,7 @@ z_index = -10
 offset_right = 1200.0
 offset_bottom = 800.0
 mouse_filter = 2
-color = Color(0.1254902, 0.16078432, 0.13725491, 1)
+color = Color(0.929, 0.906, 0.859, 1)
 
 [node name="HyphaNode" parent="World/Colony/Nodes" unique_id=1801727760 instance=ExtResource("3_node")]
 position = Vector2(440, 380)

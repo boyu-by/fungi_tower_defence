@@ -2,6 +2,10 @@ class_name OrganDifferentiationView
 extends Node2D
 ## 只读器官的真实攻击类型与分化快照；形态绘制不修改武器、库存或计时。
 
+const PENCIL_ART: Texture2D = preload("res://resources/art/textures/pencil_turret.tres")
+const ERASER_ART: Texture2D = preload("res://resources/art/textures/eraser_turret.tres")
+const SCATTER_ART: Texture2D = preload("res://resources/art/textures/scatter_turret.tres")
+
 const PIERCING_CAP: Array[Vector2] = [
 	Vector2(-25, -25), Vector2(-20, -32), Vector2(-24, -47), Vector2(-12, -36),
 	Vector2(-5, -52), Vector2(2, -37), Vector2(13, -49), Vector2(17, -35),
@@ -28,6 +32,7 @@ const SCATTER_HIGHLIGHT: Array[Vector2] = [
 var _bound_organ: AttackOrgan
 var _cap: Polygon2D
 var _highlight: Polygon2D
+var _art_sprite: Sprite2D
 var _normal_cap_polygon: PackedVector2Array = PackedVector2Array()
 var _normal_highlight_polygon: PackedVector2Array = PackedVector2Array()
 var _normal_cap_color: Color = Color.WHITE
@@ -117,11 +122,13 @@ func get_visual_state() -> Dictionary:
 func _capture_base_cap() -> void:
 	_cap = null
 	_highlight = null
+	_art_sprite = null
 	_last_attack_type = -1
 	if not _is_live_organ(_bound_organ):
 		return
 	_cap = _bound_organ.get_node_or_null("Cap") as Polygon2D
 	_highlight = _bound_organ.get_node_or_null("CapHighlight") as Polygon2D
+	_art_sprite = _bound_organ.get_node_or_null("Cap/ArtSprite") as Sprite2D
 	if is_instance_valid(_cap):
 		_normal_cap_polygon = _cap.polygon.duplicate()
 		_normal_cap_color = _cap.color
@@ -133,6 +140,13 @@ func _capture_base_cap() -> void:
 func _apply_cap_shape(attack_type: int) -> void:
 	if not is_instance_valid(_cap):
 		return
+	# 子贴图沿用 Cap 的真实射击回弹与休眠缩放，旧多边形保留兼容接口。
+	var image: Texture2D = PENCIL_ART
+	if attack_type == WeaponProfile.DamageType.ARMOR_PIERCING:
+		image = ERASER_ART
+	elif attack_type == WeaponProfile.DamageType.SCATTER:
+		image = SCATTER_ART
+	WorldArt.fit_sprite(_art_sprite, image, Vector2(66, 72))
 	match attack_type:
 		WeaponProfile.DamageType.ARMOR_PIERCING:
 			_cap.polygon = PackedVector2Array(PIERCING_CAP)

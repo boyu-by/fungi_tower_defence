@@ -65,6 +65,10 @@ func get_damage_commitment_id() -> String:
 	return _damage_commitment_id
 
 
+func get_damage_type() -> int:
+	return _damage_type
+
+
 func cancel_flight() -> void:
 	_finish()
 

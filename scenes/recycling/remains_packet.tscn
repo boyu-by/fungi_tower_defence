@@ -1,6 +1,8 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/remains_packet.gd" id="1_packet"]
+[ext_resource type="Script" path="res://scripts/visuals/resource_art_view.gd" id="2_art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_remains.tres" id="3_art"]
 
 [node name="RemainsPacket" type="Node2D"]
 z_index = -1
@@ -15,14 +17,26 @@ end_cap_mode = 2
 antialiased = true
 
 [node name="Shell" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.77, 0.59, 0.75, 1)
 polygon = PackedVector2Array(-9, -3, -5, -7, 5, -7, 9, -3, 9, 3, 5, 7, -5, 7, -9, 3)
 
 [node name="Payload" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.35, 0.24, 0.27, 1)
 polygon = PackedVector2Array(-5, -3, 5, -3, 5, 3, -5, 3)
 
 [node name="Highlight" type="Line2D" parent="."]
+visible = false
 points = PackedVector2Array(-5, -5, 3, -5)
 width = 1.5
 default_color = Color(0.97, 0.82, 0.78, 1)
+
+[node name="Art" type="Sprite2D" parent="."]
+scale = Vector2(0.022, 0.022)
+texture = ExtResource("3_art")
+script = ExtResource("2_art_view")
+kind = 2
+art_bounds = Vector2(30, 26)
+grounded = false
+fallback_paths = Array[NodePath]([NodePath("../Shell"), NodePath("../Payload"), NodePath("../Highlight")])

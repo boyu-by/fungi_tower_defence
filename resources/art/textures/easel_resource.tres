@@ -1,0 +1,7 @@
+[gd_resource type="AtlasTexture" format=3]
+
+[ext_resource type="Texture2D" path="res://assets/gameplay/chapter_1/easel_resource.png" id="image"]
+
+[resource]
+atlas = ExtResource("image")
+region = Rect2(79, 21, 415, 456)

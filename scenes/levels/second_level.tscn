@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="PackedScene" path="res://scenes/gameplay/colony_gameplay.tscn" id="1_base"]
+[ext_resource type="Resource" path="res://resources/art/chapter_2.tres" id="chapter_art"]
 [ext_resource type="Script" path="res://scripts/second_level.gd" id="2_level"]
 [ext_resource type="PackedScene" path="res://scenes/colony/hypha_node.tscn" id="3_node"]
 [ext_resource type="PackedScene" path="res://scenes/colony/hypha_edge.tscn" id="4_edge"]
@@ -24,12 +25,15 @@ font_names = PackedStringArray("Microsoft YaHei", "PingFang SC", "Noto Sans CJK 
 script = ExtResource("2_level")
 normal_weapon_profile = ExtResource("9_weapon_profile")
 
+[node name="WorldArt" parent="."]
+theme = ExtResource("chapter_art")
+
 [node name="Ground" type="ColorRect" parent="World"]
 z_index = -10
 offset_right = 1200.0
 offset_bottom = 920.0
 mouse_filter = 2
-color = Color(0.11, 0.15, 0.17, 1)
+color = Color(0.910, 0.902, 0.886, 1)
 
 [node name="MotherCore" parent="World/Colony"]
 position = Vector2(600, 690)

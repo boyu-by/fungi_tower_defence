@@ -1,6 +1,9 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/spore_projectile.gd" id="1_projectile"]
+[ext_resource type="Script" path="res://scripts/visuals/projectile_art_view.gd" id="art_view"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/pencil_projectile.tres" id="normal_art"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/eraser_projectile.tres" id="piercing_art"]
 
 [node name="SporeProjectile" type="Node2D"]
 z_index = 1
@@ -19,8 +22,19 @@ color = Color(0.76, 1, 0.46, 0.18)
 polygon = PackedVector2Array(-10, 0, -7, -7, 0, -10, 7, -7, 10, 0, 7, 7, 0, 10, -7, 7)
 
 [node name="Body" type="Polygon2D" parent="."]
+visible = false
 color = Color(0.89, 1, 0.65, 1)
 polygon = PackedVector2Array(-5, 0, 0, -4, 5, 0, 0, 4)
+
+[node name="Art" type="Sprite2D" parent="."]
+texture_filter = 2
+texture = ExtResource("normal_art")
+scale = Vector2(0.208, 0.208)
+
+[node name="ArtView" type="Node" parent="."]
+script = ExtResource("art_view")
+normal_texture = ExtResource("normal_art")
+piercing_texture = ExtResource("piercing_art")
 
 [node name="LifetimeTimer" type="Timer" parent="."]
 wait_time = 4.0

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="WorldArtTheme" format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/world_art_theme.gd" id="theme"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/easel_resource.tres" id="resource"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_remains.tres" id="remains"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/paper_obstacle.tres" id="obstacle"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_1.tres" id="crayon1"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_2.tres" id="crayon2"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/crayon_3.tres" id="crayon3"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_walk_1.tres" id="sheep_walk1"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_walk_2.tres" id="sheep_walk2"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_flower.tres" id="sheep_flower"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_hit.tres" id="sheep_hit"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_flower_hit.tres" id="sheep_flower_hit"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/sheep_dead.tres" id="sheep_dead"]
+
+[resource]
+script = ExtResource("theme")
+large_resource = ExtResource("resource")
+remains = ExtResource("remains")
+obstacle = ExtResource("obstacle")
+nutrients = Array[Texture2D]([ExtResource("crayon1"), ExtResource("crayon2"), ExtResource("crayon3")])
+enemy_normal = ExtResource("sheep_walk1")
+enemy_armored = ExtResource("sheep_flower")
+enemy_swarm = ExtResource("sheep_walk1")
+enemy_gnawer = ExtResource("sheep_flower")
+enemy_walk_frames = Array[Texture2D]([ExtResource("sheep_walk1"), ExtResource("sheep_walk2")])
+enemy_hit = ExtResource("sheep_hit")
+enemy_armored_hit = ExtResource("sheep_flower_hit")
+enemy_dead = ExtResource("sheep_dead")
+enemy_shared_states = true

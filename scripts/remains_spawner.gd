@@ -28,6 +28,9 @@ func _on_enemy_died(enemy: BasicEnemy) -> void:
 		instance.free()
 		return
 	var remains := instance as EnemyRemains
+	# 只供贴图区分摄像头残骸与通用电子碎片，不参与营养或回收结算。
+	remains.set_meta(&"art_remains_kind", \
+		&"camera" if enemy.get_archetype() == BasicEnemy.Archetype.NORMAL else &"generic")
 	remains.nutrition_value = enemy.remains_nutrition
 	remains_container.add_child(remains)
 	remains.global_position = enemy.global_position

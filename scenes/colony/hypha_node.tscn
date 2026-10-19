@@ -1,6 +1,8 @@
 [gd_scene format=3 uid="uid://cbqbiefdloo2k"]
 
 [ext_resource type="Script" uid="uid://c1b7kldr655nc" path="res://scripts/hypha_node.gd" id="1_node"]
+[ext_resource type="Script" path="res://scripts/visuals/colony_node_art.gd" id="node_art"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/node_growing.tres" id="bloom"]
 
 [sub_resource type="CircleShape2D" id="Circle_hit"]
 radius = 22.0
@@ -9,12 +11,20 @@ radius = 22.0
 script = ExtResource("1_node")
 
 [node name="Body" type="Polygon2D" parent="." unique_id=1043940818]
+visible = false
 color = Color(0.39, 0.62, 0.48, 1)
 polygon = PackedVector2Array(-15, -5, -9, -13, 3, -15, 13, -7, 15, 5, 7, 14, -5, 15, -14, 7)
 
 [node name="Center" type="Polygon2D" parent="." unique_id=407370093]
+visible = false
 color = Color(0.77, 0.86, 0.66, 1)
 polygon = PackedVector2Array(0, -6, 6, 0, 0, 6, -6, 0)
+
+[node name="ArtSprite" type="Sprite2D" parent="."]
+position = Vector2(0, -16.5)
+scale = Vector2(0.15063, 0.15063)
+texture = ExtResource("bloom")
+script = ExtResource("node_art")
 
 [node name="SelectionRing" type="Line2D" parent="." unique_id=419261583]
 visible = false

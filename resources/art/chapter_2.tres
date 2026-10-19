@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="WorldArtTheme" format=3]
+
+[ext_resource type="Script" path="res://scripts/visuals/world_art_theme.gd" id="theme"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/tablet_resource.tres" id="resource"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/screen_remains.tres" id="remains"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/draft_obstacle.tres" id="obstacle"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/energy_packet.tres" id="nutrient"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/camera_idle.tres" id="normal"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/camera_hit.tres" id="hit"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/camera_dead.tres" id="dead"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/ai_machine.tres" id="armored"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/ai_face.tres" id="swarm"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/ai_brain.tres" id="gnawer"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/computer_idle.tres" id="computer"]
+[ext_resource type="Texture2D" path="res://resources/art/textures/computer_broken.tres" id="computer_broken"]
+
+[resource]
+script = ExtResource("theme")
+chapter = 2
+large_resource = ExtResource("resource")
+remains = ExtResource("remains")
+obstacle = ExtResource("obstacle")
+nutrients = Array[Texture2D]([ExtResource("nutrient")])
+enemy_normal = ExtResource("normal")
+enemy_armored = ExtResource("armored")
+enemy_swarm = ExtResource("swarm")
+enemy_gnawer = ExtResource("gnawer")
+enemy_hit = ExtResource("hit")
+enemy_dead = ExtResource("dead")
+normal_remains = ExtResource("dead")
+facility_idle = ExtResource("computer")
+facility_damaged = ExtResource("computer_broken")

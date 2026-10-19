@@ -69,6 +69,7 @@ transition_seconds = 0.9
 
 [resource]
 script = ExtResource("sequence")
+music_id = &"chapter_3"
 title = "成年后的思考"
 caption = "可是，如此乏味，如此疲惫。现在的我，究竟是为了什么而画画呢？"
 shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05")])

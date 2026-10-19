@@ -18,14 +18,6 @@ func _ready() -> void:
 	ArtUI.menu_button(quit_button, "退出游戏")
 	for button: Button in [start_button, continue_button, quit_button]:
 		button.tooltip_text = ""
-	$Background.color = Color("e7dfd2")
-	$Center/Content/Illustration.hide()
-	$Center/Content/Menu.custom_minimum_size.x = 460
-	$Center/Content/Menu/Margin/Buttons.add_theme_constant_override("separation", 14)
-	ArtUI.typography($Center/Content/Menu/Margin/Buttons/Title, 64, true)
-	ArtUI.typography($Center/Content/Menu/Margin/Buttons/Subtitle, 22)
-	ArtUI.typography(progress_label, 20)
-	progress_label.custom_minimum_size.y = 80
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().paused = false
 	get_window().content_scale_size = Vector2i(1200, 800)

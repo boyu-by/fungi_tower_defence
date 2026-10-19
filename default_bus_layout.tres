@@ -17,3 +17,6 @@ bus/3/name = &"World"
 bus/3/send = &"Effects"
 bus/4/name = &"Stinger"
 bus/4/send = &"Effects"
+bus/5/name = &"Music"
+bus/5/volume_db = -4.437
+bus/5/send = &"Master"

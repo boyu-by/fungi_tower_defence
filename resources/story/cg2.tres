@@ -143,6 +143,7 @@ animation_offset = 13.0
 
 [resource]
 script = ExtResource("sequence")
+music_id = &"chapter_2"
 title = "AI冲击"
 caption = "人生是跌跌撞撞的旅程，不同的时候会有不同的烦恼。"
 shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05"), SubResource("Shot_06"), SubResource("Shot_07"), SubResource("Shot_08"), SubResource("Shot_09"), SubResource("Shot_10"), SubResource("Shot_11")])

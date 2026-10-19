@@ -4,6 +4,7 @@ extends Node
 
 signal sound_played(cue_id: StringName)
 signal volume_changed(value: float)
+signal music_volume_changed(value: float)
 
 class Voice:
 	var player: AudioStreamPlayer
@@ -13,7 +14,9 @@ class Voice:
 @export var preferences_path: String = "user://audio_settings.cfg"
 
 var effects_volume: float = 0.7
+var music_volume: float = 0.6
 var _previous_volume: float = 0.7
+var _previous_music_volume: float = 0.6
 var _cues: Dictionary[StringName, SoundCue] = {}
 var _last_played: Dictionary[StringName, int] = {}
 var _counts: Dictionary[StringName, int] = {}
@@ -58,7 +61,11 @@ func _ready() -> void:
 		var saved: Variant = config.get_value("audio", "effects_volume", 0.7)
 		if (saved is float or saved is int) and is_finite(float(saved)):
 			effects_volume = clampf(float(saved), 0.0, 1.0)
+		var saved_music: Variant = config.get_value("audio", "music_volume", 0.6)
+		if (saved_music is float or saved_music is int) and is_finite(float(saved_music)):
+			music_volume = clampf(float(saved_music), 0.0, 1.0)
 	_apply_volume()
+	_apply_music_volume()
 
 
 func play(cue_id: StringName) -> bool:
@@ -133,6 +140,21 @@ func stop_world() -> void:
 func stop_all() -> void:
 	for voice in _voices:
 		voice.player.stop()
+	($Music as GameMusic).stop_music(true)
+
+
+func play_music(id: StringName) -> bool:
+	return ($Music as GameMusic).play_track(id)
+
+
+func stop_music(expected_id: StringName = &"") -> void:
+	var music := $Music as GameMusic
+	if expected_id.is_empty() or music.current_id == expected_id:
+		music.stop_music()
+
+
+func pause_music(value: bool) -> void:
+	($Music as GameMusic).set_music_paused(value)
 
 
 func observe_ui(scope: Node) -> void:
@@ -154,6 +176,30 @@ func toggle_mute() -> void:
 	set_effects_volume(0.0 if effects_volume > 0.0 else _previous_volume)
 
 
+func set_music_volume(value: float, persist: bool = true) -> void:
+	if not is_finite(value):
+		return
+	music_volume = clampf(value, 0.0, 1.0)
+	_apply_music_volume()
+	if persist:
+		_preferences_dirty = true
+		save_timer.start()
+
+
+func toggle_music_mute() -> void:
+	set_music_volume(0.0 if music_volume > 0.0 else _previous_music_volume)
+
+
+func _apply_music_volume() -> void:
+	if music_volume > 0.0:
+		_previous_music_volume = music_volume
+	var bus := AudioServer.get_bus_index("Music")
+	if bus >= 0:
+		AudioServer.set_bus_mute(bus, music_volume <= 0.0)
+		AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(music_volume, 0.001)))
+	music_volume_changed.emit(music_volume)
+
+
 func _apply_volume() -> void:
 	if effects_volume > 0.0:
 		_previous_volume = effects_volume
@@ -169,6 +215,7 @@ func save_preferences() -> void:
 		return
 	var config := ConfigFile.new()
 	config.set_value("audio", "effects_volume", effects_volume)
+	config.set_value("audio", "music_volume", music_volume)
 	if config.save(preferences_path) == OK:
 		_preferences_dirty = false
 

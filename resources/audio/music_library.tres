@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="MusicLibrary" format=3]
+
+[ext_resource type="Script" path="res://scripts/audio/music_library.gd" id="library"]
+[ext_resource type="Script" path="res://scripts/audio/music_track.gd" id="track"]
+[ext_resource type="AudioStreamMP3" path="res://assets/audio/music/chapter_1.mp3" id="chapter_1"]
+[ext_resource type="AudioStreamMP3" path="res://assets/audio/music/chapter_2.mp3" id="chapter_2"]
+[ext_resource type="AudioStreamMP3" path="res://assets/audio/music/chapter_3.mp3" id="chapter_3"]
+[ext_resource type="AudioStreamMP3" path="res://assets/audio/music/battle.mp3" id="battle"]
+
+[sub_resource type="Resource" id="Chapter1"]
+script = ExtResource("track")
+id = &"chapter_1"
+stream = ExtResource("chapter_1")
+volume_db = -14.0
+
+[sub_resource type="Resource" id="Chapter2"]
+script = ExtResource("track")
+id = &"chapter_2"
+stream = ExtResource("chapter_2")
+volume_db = -14.0
+
+[sub_resource type="Resource" id="Chapter3"]
+script = ExtResource("track")
+id = &"chapter_3"
+stream = ExtResource("chapter_3")
+volume_db = -14.0
+
+[sub_resource type="Resource" id="Battle"]
+script = ExtResource("track")
+id = &"battle"
+stream = ExtResource("battle")
+volume_db = -19.0
+
+[resource]
+script = ExtResource("library")
+tracks = Array[ExtResource("track")]([SubResource("Chapter1"), SubResource("Chapter2"), SubResource("Chapter3"), SubResource("Battle")])

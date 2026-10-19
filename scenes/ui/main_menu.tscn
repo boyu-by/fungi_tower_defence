@@ -2,9 +2,13 @@
 
 [ext_resource type="Script" path="res://scripts/main_menu.gd" id="1_menu"]
 [ext_resource type="PackedScene" path="res://scenes/audio/game_audio.tscn" id="4_audio"]
-[ext_resource type="PackedScene" path="res://scenes/audio/audio_volume_control.tscn" id="5_volume"]
+[ext_resource type="PackedScene" path="res://scenes/audio/audio_settings_control.tscn" id="5_volume"]
 [ext_resource type="Theme" path="res://resources/ui/menu_theme.tres" id="2_theme"]
-[ext_resource type="Texture2D" path="res://assets/Dark World - Free Asset Pack - v1.0/Inventory/inventory_item_mushroom.png" id="3_art"]
+[ext_resource type="Texture2D" path="res://assets/ui/handdrawn/title.png" id="3_art"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_title"]
+atlas = ExtResource("3_art")
+region = Rect2(13, 129, 1001, 776)
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -24,44 +28,44 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.055, 0.102, 0.086, 1)
+color = Color(0.90588236, 0.8745098, 0.8235294, 1)
 
 [node name="Center" type="CenterContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = -112.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="Content" type="HBoxContainer" parent="Center"]
 layout_mode = 2
-theme_override_constants/separation = 70
+theme_override_constants/separation = 50
 
 [node name="Illustration" type="VBoxContainer" parent="Center/Content"]
-custom_minimum_size = Vector2(360, 0)
+custom_minimum_size = Vector2(500, 0)
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 20
+theme_override_constants/separation = 16
 
 [node name="Artwork" type="TextureRect" parent="Center/Content/Illustration"]
-custom_minimum_size = Vector2(360, 320)
+custom_minimum_size = Vector2(500, 390)
 layout_mode = 2
-texture_filter = 1
-texture = ExtResource("3_art")
+texture_filter = 2
+texture = SubResource("AtlasTexture_title")
 expand_mode = 1
 stretch_mode = 5
 mouse_filter = 2
-modulate = Color(0.8, 0.88, 0.74, 1)
 
 [node name="Caption" type="Label" parent="Center/Content/Illustration"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.52, 0.66, 0.53, 1)
+theme_override_font_sizes/font_size = 24
 text = "生长 · 回收 · 守护"
 horizontal_alignment = 1
 
 [node name="Menu" type="PanelContainer" parent="Center/Content"]
-custom_minimum_size = Vector2(390, 480)
+custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
 
 [node name="Margin" type="MarginContainer" parent="Center/Content/Menu"]
@@ -69,17 +73,11 @@ layout_mode = 2
 
 [node name="Buttons" type="VBoxContainer" parent="Center/Content/Menu/Margin"]
 layout_mode = 2
-theme_override_constants/separation = 18
-
-[node name="Title" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 48
-text = "绘生"
-horizontal_alignment = 1
+theme_override_constants/separation = 14
 
 [node name="Subtitle" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 22
 text = "从初次创作，到与自己和解"
 horizontal_alignment = 1
 
@@ -104,10 +102,9 @@ layout_mode = 2
 text = "退出游戏"
 
 [node name="Progress" type="Label" parent="Center/Content/Menu/Margin/Buttons"]
-custom_minimum_size = Vector2(300, 66)
+custom_minimum_size = Vector2(300, 80)
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.6, 0.72, 0.59, 1)
+theme_override_font_sizes/font_size = 20
 text = "尚无游戏进度，从第一次创作开始。"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -127,7 +124,7 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -334.0
-offset_top = -70.0
+offset_top = -114.0
 offset_right = -24.0
 offset_bottom = -24.0
 grow_horizontal = 0

@@ -13,6 +13,7 @@ var _result_played: bool = false
 func _ready() -> void:
 	if not scope.has_node("World/Colony/MotherCore"):
 		return
+	audio.play_music(&"battle")
 	for node in scope.find_children("*", "", true, false):
 		_bind_node(node)
 	if scope.has_signal("level_finished"):
@@ -131,6 +132,7 @@ func _on_fragment_collected(_id: StringName, _text: String) -> void:
 
 func _on_level_stopping(reason: StringName) -> void:
 	_stopping = true
+	audio.stop_music()
 	if reason in [&"victory", &"core_depleted"]:
 		audio.stop_world()
 	else:
@@ -142,5 +144,6 @@ func _on_level_finished(snapshot: Dictionary) -> void:
 		return
 	_result_played = true
 	_stopping = true
+	audio.stop_music()
 	audio.stop_world()
 	audio.play(&"victory" if bool(snapshot.get("victory", false)) else &"defeat")

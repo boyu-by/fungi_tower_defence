@@ -120,6 +120,7 @@ seconds = 5.0
 
 [resource]
 script = ExtResource("sequence")
+music_id = &"chapter_1"
 title = "初次绘画"
 caption = "小时候，我喜欢上了画画。"
 shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05"), SubResource("Shot_06"), SubResource("Shot_07"), SubResource("Shot_08")])

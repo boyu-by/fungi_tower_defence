@@ -98,6 +98,7 @@ animation_offset = 27.5
 
 [resource]
 script = ExtResource("sequence")
+music_id = &"chapter_3"
 title = "与自己和解"
 caption = "因为我想，所以我一直画着。"
 shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05"), SubResource("Shot_06"), SubResource("Shot_07"), SubResource("Shot_08")])

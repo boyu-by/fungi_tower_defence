@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/audio/audio_volume_control.tscn" id="volume"]
+
+[node name="AudioSettings" type="VBoxContainer"]
+process_mode = 3
+custom_minimum_size = Vector2(290, 86)
+theme_override_constants/separation = 2
+
+[node name="Effects" parent="." instance=ExtResource("volume")]
+layout_mode = 2
+
+[node name="Music" parent="." instance=ExtResource("volume")]
+layout_mode = 2
+channel = 1

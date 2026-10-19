@@ -24,6 +24,7 @@ var _transition_elapsed: float = 0.0
 var _transition_duration: float = 0.0
 var _audio: GameAudio
 var _last_audio_frame: int = -1
+var _music_released: bool = false
 
 static func open(parent: Node, chapter: int) -> StoryPlayer:
 	var player := StoryPlayer.new()
@@ -39,6 +40,8 @@ func _ready() -> void:
 		_audio = preload("res://scenes/audio/game_audio.tscn").instantiate() as GameAudio
 		add_child(_audio)
 	_audio.observe_ui(self)
+	if not sequence.music_id.is_empty():
+		_audio.play_music(sequence.music_id)
 	layer = 100
 	var backdrop := ColorRect.new()
 	backdrop.color = Color("e7dfd2")
@@ -118,7 +121,7 @@ func _ready() -> void:
 	_play = _button(row, "暂停播放", _toggle_play)
 	_next = _button(row, "下一幕", advance)
 	_button(row, "跳过剧情", finish)
-	var volume := preload("res://scenes/audio/audio_volume_control.tscn").instantiate() as Control
+	var volume := preload("res://scenes/audio/audio_settings_control.tscn").instantiate() as Control
 	row.add_child(volume)
 	_refresh()
 	_next.grab_focus()
@@ -127,6 +130,7 @@ func _button(row: HBoxContainer, text: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size = Vector2(144, 46)
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.pressed.connect(callback)
 	row.add_child(button)
 	return button
@@ -159,6 +163,8 @@ func _input(event: InputEvent) -> void:
 
 func _toggle_play() -> void:
 	playing = not playing
+	if not sequence.music_id.is_empty():
+		_audio.pause_music(not playing)
 	_play.text = "暂停播放" if playing else "自动播放"
 
 func advance() -> void:
@@ -227,5 +233,16 @@ func finish() -> void:
 	if _finished:
 		return
 	_finished = true
+	_release_music()
 	finished.emit()
 	queue_free()
+
+
+func _release_music() -> void:
+	if not _music_released and is_instance_valid(_audio) and not sequence.music_id.is_empty():
+		_music_released = true
+		_audio.stop_music(sequence.music_id)
+
+
+func _exit_tree() -> void:
+	_release_music()

@@ -4,6 +4,8 @@
 [ext_resource type="Resource" path="res://resources/audio/sound_bank.tres" id="2_bank"]
 [ext_resource type="Script" path="res://scripts/audio/ui_audio_feedback.gd" id="3_ui"]
 [ext_resource type="Script" path="res://scripts/audio/colony_audio_feedback.gd" id="4_world"]
+[ext_resource type="Script" path="res://scripts/audio/game_music.gd" id="5_music"]
+[ext_resource type="Resource" path="res://resources/audio/music_library.tres" id="6_music_library"]
 
 [node name="GameAudio" type="Node"]
 process_mode = 3
@@ -60,6 +62,19 @@ metadata/channel = 2
 [node name="SaveTimer" type="Timer" parent="."]
 wait_time = 0.4
 one_shot = true
+
+[node name="Music" type="Node" parent="."]
+process_mode = 3
+script = ExtResource("5_music")
+library = ExtResource("6_music_library")
+
+[node name="Music0" type="AudioStreamPlayer" parent="Music"]
+process_mode = 3
+bus = &"Music"
+
+[node name="Music1" type="AudioStreamPlayer" parent="Music"]
+process_mode = 3
+bus = &"Music"
 
 [node name="UIFeedback" type="Node" parent="."]
 script = ExtResource("3_ui")

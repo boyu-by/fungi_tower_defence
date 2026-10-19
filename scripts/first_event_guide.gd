@@ -107,21 +107,13 @@ func _publish() -> void:
 func _build_ui() -> void:
 	if is_instance_valid(_message_panel):
 		return
-	var font: SystemFont = SystemFont.new()
-	font.font_names = PackedStringArray(["PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC"])
-	var guide_theme: Theme = Theme.new()
-	guide_theme.default_font = font
-	guide_theme.default_font_size = 14
+	var guide_theme: Theme = ArtUI.theme(20)
 	theme = guide_theme
 	_message_panel = Panel.new()
 	_message_panel.name = "MessagePanel"
 	_message_panel.size = Vector2(636, 60)
 	_message_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var background: StyleBoxFlat = StyleBoxFlat.new()
-	background.bg_color = Color(0.075, 0.105, 0.085, 0.97)
-	background.border_color = Color(0.40, 0.58, 0.43, 1.0)
-	background.set_border_width_all(1)
-	background.set_corner_radius_all(5)
+	var background: StyleBoxTexture = ArtUI.paper(ArtUI.UI + "对话框.png", 8)
 	_message_panel.add_theme_stylebox_override("panel", background)
 	add_child(_message_panel)
 	_message_label = Label.new()
@@ -129,7 +121,7 @@ func _build_ui() -> void:
 	_message_label.position = Vector2(12, 7)
 	_message_label.size = Vector2(526, 46)
 	_message_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_message_label.add_theme_color_override("font_color", Color(0.94, 0.94, 0.83, 1))
+	_message_label.add_theme_color_override("font_color", ArtUI.INK)
 	_message_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_message_panel.add_child(_message_label)
 	_dismiss_button = Button.new()

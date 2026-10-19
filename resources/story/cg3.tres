@@ -1,8 +1,74 @@
-[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="StorySequence" load_steps=14 format=3]
 
-[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="sequence"]
+[ext_resource type="Script" path="res://scripts/story_shot.gd" id="shot"]
+[ext_resource type="Texture2D" path="res://assets/story/cg2/B2.png" id="tex0"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/C1-1-1.png" id="tex1"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/C1-1-2.png" id="tex2"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/C1-1-3.png" id="tex3"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/C1-1-4.png" id="tex4"]
+
+[sub_resource type="Resource" id="Shot_00"]
+script = ExtResource("shot")
+title = "学着接纳"
+layers = Array[Texture2D]([ExtResource("tex0")])
+scene_id = &"acceptance"
+grain = 0.012
+caption = "再怎么怨恨也没有用。"
+seconds = 3.5
+
+[sub_resource type="Resource" id="Shot_01"]
+script = ExtResource("shot")
+title = "学着接纳"
+layers = Array[Texture2D]([ExtResource("tex0")])
+scene_id = &"acceptance"
+grain = 0.012
+caption = "既然 AI 的发展是必然趋势，我也开始学着接纳 AI，在简历上写着“擅长 AI 协作”。"
+seconds = 9.0
+animation_offset = 3.5
+
+[sub_resource type="Resource" id="Shot_02"]
+script = ExtResource("shot")
+title = "学着接纳"
+layers = Array[Texture2D]([ExtResource("tex0")])
+scene_id = &"acceptance"
+grain = 0.012
+caption = "我想，这也是一种成长。"
+seconds = 3.5
+animation_offset = 12.5
+
+[sub_resource type="Resource" id="Shot_03"]
+script = ExtResource("shot")
+flipbook = Array[Texture2D]([ExtResource("tex1"), ExtResource("tex2"), ExtResource("tex3"), ExtResource("tex4")])
+flipbook_seconds = 1.6
+flipbook_loops = 2
+scene_id = &"working_days"
+grain = 0.012
+caption = "高效的 AI 工具，熟练的作画手法，保质保量的“作品”。"
+seconds = 6.4
+
+[sub_resource type="Resource" id="Shot_04"]
+script = ExtResource("shot")
+flipbook = Array[Texture2D]([ExtResource("tex1"), ExtResource("tex2"), ExtResource("tex3"), ExtResource("tex4")])
+flipbook_seconds = 1.6
+flipbook_loops = 2
+scene_id = &"working_days"
+grain = 0.012
+caption = "在这薪资还算不错的岗位上，日复一日，年复一年……"
+seconds = 6.4
+animation_offset = 6.4
+
+[sub_resource type="Resource" id="Shot_05"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex4")])
+caption = "可是，如此乏味，如此疲惫。现在的我，究竟是为了什么而画画呢？"
+seconds = 8.0
+grain = 0.015
+desaturation = 0.2
+transition_seconds = 0.9
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("sequence")
 title = "成年后的思考"
-caption = "我画了很久的画，直到成年。也学会了使用AI提升效率。我开始能够用画画养活自己，可每到夜深人静，我总会思考绘画的初心。现在的我，究竟是为什么而画画呢？"
+caption = "可是，如此乏味，如此疲惫。现在的我，究竟是为了什么而画画呢？"
+shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05")])

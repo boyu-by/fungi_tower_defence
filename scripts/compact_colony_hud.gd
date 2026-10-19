@@ -30,6 +30,8 @@ var pause_button: Button
 var more_button: Button
 var menu_button: Button
 var goal_label: Label
+var health_meter: ArtHealthBar
+var health_value_label: Label
 var level_menu: LevelMenuLayer
 var maturing_selector: OptionButton
 
@@ -102,20 +104,48 @@ func _build_shell() -> void:
 	top_left.add_child(resource_column)
 	var resources: HBoxContainer = _horizontal(resource_column)
 	health_button = _button(resources, "母核 240/240", toggle_page.bind(&"overview"))
+	health_button.custom_minimum_size = Vector2(200, 44)
+	for state: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color"]:
+		health_button.add_theme_color_override(state, Color.TRANSPARENT)
+	for state: String in ["normal", "hover", "pressed", "disabled"]:
+		health_button.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	health_meter = ArtHealthBar.new()
+	health_meter.name = "CoreHealthMeter"
+	health_meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	health_meter.show_behind_parent = true
+	health_meter.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	health_meter.offset_bottom = -20
+	health_button.add_child(health_meter)
+	health_value_label = Label.new()
+	health_value_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	health_value_label.offset_top = -20
+	health_value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	health_value_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	health_button.add_child(health_value_label)
 	nutrition_button = _button(resources, "营养 72", toggle_page.bind(&"overview"))
 	goal_label = Label.new()
 	goal_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	goal_label.add_theme_font_size_override("font_size", 13)
+	goal_label.add_theme_font_size_override("font_size", 18)
 	goal_label.text = "目标：收集三个碎片，保护母核" if _level.has_method("get_fragment_targets") else (
 		"目标：摧毁三台AI，保护母核" if _level.has_method("get_facility_targets") else "目标：清除六波敌人，保护母核")
 	resource_column.add_child(goal_label)
+	var goal_box := ArtUI.paper(ArtUI.UI + "目标.png", 8)
+	goal_box.content_margin_left = 32
+	goal_label.add_theme_stylebox_override("normal", goal_box)
 	top_right = _surface("WaveControls")
 	var flow: HBoxContainer = _horizontal(top_right)
 	wave_button = _button(flow, "初始准备 · 1/6", toggle_page.bind(&"wave"))
+	for state: String in ["normal", "hover", "pressed", "disabled"]:
+		var wave_paper := ArtUI.paper(ArtUI.UI + "关卡.png", 12)
+		wave_paper.content_margin_left = 42
+		wave_paper.content_margin_right = 20
+		if state == "hover":
+			wave_paper.modulate_color = Color("fff2df")
+		wave_button.add_theme_stylebox_override(state, wave_paper)
+	wave_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	start_button = _button(flow, "开始第 1 波", _level.start_next_wave)
-	start_button.add_theme_stylebox_override("normal", _box(Color("c7d9a2"), Color("c7d9a2"), 8))
-	start_button.add_theme_color_override("font_color", Color("17251b"))
 	pause_button = _button(flow, "暂停", _level.pause_controller.toggle_pause)
+	ArtUI.bitmap(pause_button, ArtUI.UI + "暂停 (6).png", "", Vector2(38, 38))
 	pause_button.tooltip_text = "Space 全局暂停 / 恢复；暂停中仍可选择和预览"
 	menu_button = _button(flow, "菜单", level_menu.open_menu)
 	more_button = _button(flow, "⋯", toggle_page.bind(&"more"))
@@ -133,22 +163,30 @@ func _build_shell() -> void:
 	selection_button.name = "SelectedDetails"
 	selection_button.hide()
 	_mode_panel = _surface("PlacementHint")
+	var hint_paper := ArtUI.paper(ArtUI.UI + "窗口 (2).png", 32)
+	_mode_panel.add_theme_stylebox_override("panel", hint_paper)
+	_mode_panel.minimum_size_changed.connect(func() -> void: _layout_mode_hint.call_deferred())
 	var mode_row: HBoxContainer = _horizontal(_mode_panel)
+	mode_row.add_theme_constant_override("separation", 20)
 	_mode_label = Label.new()
 	_mode_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_mode_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_mode_label.max_lines_visible = 3
+	_mode_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_mode_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_mode_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mode_label.add_theme_font_size_override("font_size", 13)
+	_mode_label.add_theme_font_size_override("font_size", 20)
 	mode_row.add_child(_mode_label)
-	_button(mode_row, "详情", _open_mode_details)
+	var details_button: Button = _button(mode_row, "详情", _open_mode_details)
+	details_button.name = "ModeDetails"
+	details_button.custom_minimum_size = Vector2(80, 50)
+	details_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_mode_panel.hide()
 	_toast = _button(_root, "", toggle_page.bind(&"messages"))
 	_toast.name = "Notice"
 	_toast.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_toast.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_toast.clip_text = true
-	_toast.add_theme_font_size_override("font_size", 13)
+	_toast.add_theme_font_size_override("font_size", 20)
 	_toast.hide()
 	_toast_timer = Timer.new()
 	_toast_timer.one_shot = true
@@ -162,9 +200,10 @@ func _build_shell() -> void:
 	var heading: HBoxContainer = _horizontal(column)
 	_drawer_title = Label.new()
 	_drawer_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_drawer_title.add_theme_font_size_override("font_size", 19)
+	ArtUI.typography(_drawer_title, 28, true)
 	heading.add_child(_drawer_title)
 	var close: Button = _button(heading, "×", close_drawer)
+	ArtUI.bitmap(close, ArtUI.UI + "关闭 (2).png", ArtUI.UI + "关闭 (1).png", Vector2(32, 34))
 	close.tooltip_text = "收起面板；不会取消任务"
 	_scroll = ScrollContainer.new()
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -416,6 +455,13 @@ func refresh() -> void:
 	start_button.text = _level.flow_hud.start_button.text
 	start_button.disabled = _level.flow_hud.start_button.disabled
 	pause_button.text = "恢复 · Space" if get_tree().paused else "暂停 · Space"
+	var pause_art: String = "暂停 (4).png" if get_tree().paused else "暂停 (6).png"
+	if pause_button.get_meta("pause_art", "") != pause_art:
+		ArtUI.bitmap(pause_button, ArtUI.UI + pause_art, "", Vector2(38, 38))
+		pause_button.set_meta("pause_art", pause_art)
+	health_meter.max_value = _level.mother_core.max_health
+	health_meter.value = _level.mother_core.health
+	health_value_label.text = health_button.text
 	pause_button.disabled = _level.flow_hud.pause_button.disabled
 	var snapshot: Dictionary = _level.construction_coordinator.get_snapshot()
 	var count: int = snapshot.get("entries", []).size() + snapshot.get("maturing", []).size()
@@ -475,8 +521,10 @@ func _refresh_mode() -> void:
 		mode = &"repair"
 		message = _level.hud.repair_info_label.text.get_slice("\n", 0) + " · J 修复 / K 暂停 / Backspace 取消"
 	_mode_panel.visible = mode != &""
-	_mode_label.text = message
-	_mode_label.tooltip_text = message
+	if _mode_label.text != message:
+		_mode_label.text = message
+		_mode_label.tooltip_text = message
+		_layout_mode_hint.call_deferred()
 	if mode != _last_mode and mode != &"" and active_page != &"repair":
 		close_drawer()
 	_last_mode = mode
@@ -634,6 +682,8 @@ func _page(id: StringName) -> CompactHUDPage:
 func _surface(node_name: String) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = node_name
+	var texture: String = "窗口.png" if node_name == "Details" else ("窗口 (2).png" if node_name == "PlacementHint" else "框底 (2).png")
+	panel.add_theme_stylebox_override("panel", ArtUI.paper(ArtUI.UI + texture, 40 if node_name == "Details" else 12))
 	_root.add_child(panel)
 	return panel
 
@@ -649,7 +699,7 @@ func _button(parent: Node, caption: String, callback: Callable) -> Button:
 	var button := Button.new()
 	button.text = caption
 	button.focus_mode = Control.FOCUS_NONE
-	button.custom_minimum_size.y = 38
+	button.custom_minimum_size.y = 46
 	button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
@@ -664,19 +714,30 @@ func _layout() -> void:
 	top_left.size = top_left.get_combined_minimum_size()
 	top_right.size = top_right.get_combined_minimum_size()
 	top_right.position = Vector2(viewport_size.x - top_right.size.x - 24, 18)
-	dock.size = Vector2(620, 80)
-	dock.position = Vector2((viewport_size.x - dock.size.x) * 0.5, viewport_size.y - 104)
-	drawer.position = Vector2(viewport_size.x - 436, 88)
-	drawer.size = Vector2(412, maxf(300, viewport_size.y - 224))
+	dock.size = Vector2(660, 90)
+	dock.position = Vector2((viewport_size.x - dock.size.x) * 0.5, viewport_size.y - 114)
+	drawer.position = Vector2(viewport_size.x - 544, maxf(130, top_right.get_global_rect().end.y + 16))
+	drawer.size = Vector2(520, maxf(300, viewport_size.y - drawer.position.y - 140))
 	selection_button.position = Vector2(24, viewport_size.y - 151)
 	selection_button.size = Vector2(320, 38)
-	var hint_width: float = minf(700, drawer.position.x - 48) if drawer.visible else 700.0
-	_mode_panel.position = Vector2(24 if drawer.visible else (viewport_size.x - hint_width) * 0.5, viewport_size.y - 202)
-	_mode_panel.size = Vector2(hint_width, 86)
-	_toast.position = Vector2(24, 112)
-	_toast.size = Vector2(minf(660, viewport_size.x - 484), 38)
+	_layout_mode_hint()
+	_toast.position = Vector2(24, maxf(128, top_left.get_global_rect().end.y + 12))
+	_toast.size = Vector2(minf(660, viewport_size.x - 48), 48)
 	if is_instance_valid(_level.frontier_status):
 		_level.frontier_status.exposure_label_position = Vector2(24, viewport_size.y - 216)
+
+
+func _layout_mode_hint() -> void:
+	if not is_inside_tree() or not is_instance_valid(_mode_panel) or not is_instance_valid(dock):
+		return
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var hint_width: float = minf(760, drawer.position.x - 48) if drawer.visible else minf(760, viewport_size.x - 48)
+	_mode_panel.size.x = hint_width
+	var height: float = maxf(124, _mode_panel.get_combined_minimum_size().y)
+	_mode_panel.size.y = height
+	_mode_panel.position = Vector2(24 if drawer.visible else (viewport_size.x - hint_width) * 0.5, dock.position.y - height - 16)
+	if _mode_panel.visible and is_instance_valid(_level.frontier_status):
+		_level.frontier_status.exposure_label_position = Vector2(24, _mode_panel.position.y - 32)
 
 
 func _box(background: Color, border: Color, radius: int) -> StyleBoxFlat:
@@ -693,29 +754,4 @@ func _box(background: Color, border: Color, radius: int) -> StyleBoxFlat:
 
 
 func _make_theme() -> Theme:
-	var theme := Theme.new()
-	theme.default_font = _level.hud.selection_label.get_theme_font("font")
-	theme.default_font_size = 14
-	var normal: StyleBoxFlat = _box(Color("14221c"), Color("3c5144"), 8)
-	var hover: StyleBoxFlat = _box(Color("263e2e"), Color("66805a"), 8)
-	var pressed: StyleBoxFlat = _box(Color("3a5236"), Color("c7d9a2"), 8)
-	var disabled: StyleBoxFlat = _box(Color("18241d"), Color("2d3c32"), 8)
-	for type: StringName in [&"Button", &"OptionButton", &"CheckButton"]:
-		theme.set_stylebox("normal", type, normal)
-		theme.set_stylebox("hover", type, hover)
-		theme.set_stylebox("pressed", type, pressed)
-		theme.set_stylebox("hover_pressed", type, pressed)
-		theme.set_stylebox("disabled", type, disabled)
-		theme.set_color("font_color", type, Color("e6edde"))
-		theme.set_color("font_hover_color", type, Color("f2f4e7"))
-		theme.set_color("font_pressed_color", type, Color("e6edde"))
-		theme.set_color("font_disabled_color", type, Color("788d79"))
-	theme.set_color("font_color", "Label", Color("c3d1bf"))
-	theme.set_stylebox("panel", "PanelContainer", _box(Color("14221c"), Color("3c5144"), 12))
-	var track := StyleBoxFlat.new()
-	track.bg_color = Color("293b2e")
-	var fill := StyleBoxFlat.new()
-	fill.bg_color = Color("c7d9a2")
-	theme.set_stylebox("background", "ProgressBar", track)
-	theme.set_stylebox("fill", "ProgressBar", fill)
-	return theme
+	return ArtUI.theme(22)

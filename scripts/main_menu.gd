@@ -12,6 +12,20 @@ var _navigator: CampaignNavigator
 
 
 func _ready() -> void:
+	ArtUI.skin_tree(self)
+	ArtUI.menu_button(start_button, "开始游戏")
+	ArtUI.menu_button(continue_button, "继续游戏")
+	ArtUI.menu_button(quit_button, "退出游戏")
+	for button: Button in [start_button, continue_button, quit_button]:
+		button.tooltip_text = ""
+	$Background.color = Color("e7dfd2")
+	$Center/Content/Illustration.hide()
+	$Center/Content/Menu.custom_minimum_size.x = 460
+	$Center/Content/Menu/Margin/Buttons.add_theme_constant_override("separation", 14)
+	ArtUI.typography($Center/Content/Menu/Margin/Buttons/Title, 64, true)
+	ArtUI.typography($Center/Content/Menu/Margin/Buttons/Subtitle, 22)
+	ArtUI.typography(progress_label, 20)
+	progress_label.custom_minimum_size.y = 80
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_tree().paused = false
 	get_window().content_scale_size = Vector2i(1200, 800)
@@ -49,7 +63,6 @@ func refresh_progress() -> void:
 		progress_label.text = ("已通关，可继续挑战。\n" if progress.completed else "") + "继续：%s\n从本关开头重新开始。" % name_text
 	if not _navigator.progress_store.last_error.is_empty():
 		progress_label.text = _navigator.progress_store.last_error
-	continue_button.tooltip_text = progress_label.text
 
 
 func _on_start() -> void:

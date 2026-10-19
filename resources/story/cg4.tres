@@ -1,8 +1,103 @@
-[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="StorySequence" load_steps=14 format=3]
 
-[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="sequence"]
+[ext_resource type="Script" path="res://scripts/story_shot.gd" id="shot"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/C1-2.png" id="tex0"]
+[ext_resource type="Texture2D" path="res://assets/story/cg3/c1-3.png" id="tex1"]
+
+[sub_resource type="Resource" id="Shot_00"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0")])
+canvas_size = Vector2(2360, 1640)
+framing = Rect2(460, 330, 1380, 1000)
+scene_id = &"sketchbook"
+grain = 0.01
+caption = "为什么不试试呢？就像小时候的自己，"
+seconds = 5.0
+
+[sub_resource type="Resource" id="Shot_01"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0")])
+canvas_size = Vector2(2360, 1640)
+framing = Rect2(460, 330, 1380, 1000)
+scene_id = &"sketchbook"
+grain = 0.01
+caption = "只是想拿起画笔，打开素描本，只是这样画着——"
+seconds = 5.5
+animation_offset = 5.0
+
+[sub_resource type="Resource" id="Shot_02"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "因为我想，所以我一直画着。"
+seconds = 5.0
+transition_seconds = 1.0
+
+[sub_resource type="Resource" id="Shot_03"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "……"
+seconds = 2.0
+animation_offset = 5.0
+
+[sub_resource type="Resource" id="Shot_04"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "在这无边的画布里，每一次绘画都是化挫折为成长："
+seconds = 6.0
+animation_offset = 7.0
+
+[sub_resource type="Resource" id="Shot_05"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "比痛苦先涌现的是梦的色彩、"
+seconds = 4.0
+animation_offset = 13.0
+
+[sub_resource type="Resource" id="Shot_06"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "比恐慌先涌现的是渴望突破的勇气、"
+seconds = 4.5
+animation_offset = 17.0
+
+[sub_resource type="Resource" id="Shot_07"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "比迷茫先涌现的是“只是想一直画下去”的简单初心——"
+seconds = 6.0
+animation_offset = 21.5
+
+[sub_resource type="Resource" id="Shot_08"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex1")])
+canvas_size = Vector2(2360, 1640)
+scene_id = &"keep_drawing"
+grain = 0.01
+caption = "而这也不止在游戏有限的窗口里。"
+seconds = 5.0
+animation_offset = 27.5
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("sequence")
 title = "与自己和解"
-caption = "我思考了很久，直到现在，才发现画画不应为了任何理由。仅仅是想画，所以去画。"
+caption = "因为我想，所以我一直画着。"
+shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05"), SubResource("Shot_06"), SubResource("Shot_07"), SubResource("Shot_08")])

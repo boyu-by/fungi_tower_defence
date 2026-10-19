@@ -1,8 +1,125 @@
-[gd_resource type="Resource" script_class="StorySequence" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="StorySequence" load_steps=25 format=3]
 
-[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/story_sequence.gd" id="sequence"]
+[ext_resource type="Script" path="res://scripts/story_shot.gd" id="shot"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-1.png" id="tex0"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-2.png" id="tex1"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-2shade.png" id="tex2"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-3.png" id="tex3"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-3shade.png" id="tex4"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-4-1.png" id="tex5"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A1-4-2.png" id="tex6"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-1-1.png" id="tex7"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-1-2.png" id="tex8"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-2-1.png" id="tex9"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-2-2.png" id="tex10"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-3-1.png" id="tex11"]
+[ext_resource type="Texture2D" path="res://assets/story/cg1/A2-3-2.png" id="tex12"]
+
+[sub_resource type="Resource" id="Shot_00"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+hand_motion = true
+scene_id = &"childhood"
+grain = 0.012
+caption = "小时候，我喜欢上了画画。"
+seconds = 4.0
+
+[sub_resource type="Resource" id="Shot_01"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+hand_motion = true
+scene_id = &"childhood"
+grain = 0.012
+caption = "拿起画笔，混乱地、缤纷地、充满希望地涂抹着，描绘着我的幻想——"
+seconds = 8.0
+animation_offset = 4.0
+
+[sub_resource type="Resource" id="Shot_02"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1"), ExtResource("tex4"), ExtResource("tex3")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+hand_motion = true
+scene_id = &"conversation"
+grain = 0.012
+adult_entry = true
+speaker = "大人"
+caption = "“小朋友，你画的是什么呀？”"
+seconds = 4.5
+
+[sub_resource type="Resource" id="Shot_03"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1"), ExtResource("tex4"), ExtResource("tex3")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+hand_motion = true
+scene_id = &"conversation"
+grain = 0.012
+speaker = "小时候的我"
+caption = "“这是我，这是小花，这是云朵！”"
+seconds = 4.5
+animation_offset = 4.5
+
+[sub_resource type="Resource" id="Shot_04"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1"), ExtResource("tex4"), ExtResource("tex3")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+hand_motion = true
+scene_id = &"conversation"
+grain = 0.012
+speaker = "大人"
+caption = "“原来是这样，你可真是一位有天赋的小画家。”"
+seconds = 6.0
+animation_offset = 9.0
+
+[sub_resource type="Resource" id="Shot_05"]
+script = ExtResource("shot")
+layers = Array[Texture2D]([ExtResource("tex0"), ExtResource("tex2"), ExtResource("tex1"), ExtResource("tex4"), ExtResource("tex3")])
+flipbook = Array[Texture2D]([ExtResource("tex5"), ExtResource("tex6")])
+desaturation = 0.8
+darkness = 0.26
+unsettled = true
+grain = 0.055
+caption = "可是，我真的有天赋吗？画画，真的像我想象中一样开心吗？"
+seconds = 7.0
+transition_seconds = 1.1
+
+[sub_resource type="Resource" id="Shot_06"]
+script = ExtResource("shot")
+background = Color(0.16, 0.13, 0.15, 1)
+unsettled = true
+grain = 0.04
+framing = Rect2(360, 100, 1300, 920)
+transition_seconds = 0.16
+flipbook = Array[Texture2D]([ExtResource("tex7"), ExtResource("tex8")])
+caption = "什么时候开始呢？画画成了噩梦，"
+seconds = 3.2
+
+[sub_resource type="Resource" id="Shot_07"]
+script = ExtResource("shot")
+background = Color(0.16, 0.13, 0.15, 1)
+unsettled = true
+grain = 0.04
+framing = Rect2(360, 100, 1300, 920)
+transition_seconds = 0.16
+flipbook = Array[Texture2D]([ExtResource("tex9"), ExtResource("tex10")])
+caption = "我不敢拿起画笔。"
+seconds = 2.8
+
+[sub_resource type="Resource" id="Shot_08"]
+script = ExtResource("shot")
+background = Color(0.16, 0.13, 0.15, 1)
+unsettled = true
+grain = 0.04
+framing = Rect2(360, 100, 1300, 920)
+transition_seconds = 0.16
+flipbook = Array[Texture2D]([ExtResource("tex11"), ExtResource("tex12")])
+caption = "熟悉的线条变成了怪物，向我袭来……"
+seconds = 5.0
 
 [resource]
-script = ExtResource("1")
+script = ExtResource("sequence")
 title = "初次绘画"
-caption = "小时候，我喜欢上了画画，尤其喜欢在画布上创作的感受。于是，我开始在画布上描绘属于我的冒险故事。但是，绘画的道路并非一帆风顺......"
+caption = "小时候，我喜欢上了画画。"
+shots = Array[ExtResource("shot")]([SubResource("Shot_00"), SubResource("Shot_01"), SubResource("Shot_02"), SubResource("Shot_03"), SubResource("Shot_04"), SubResource("Shot_05"), SubResource("Shot_06"), SubResource("Shot_07"), SubResource("Shot_08")])

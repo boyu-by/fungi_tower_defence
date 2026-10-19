@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="fungi_DEMO"
+config/name="绘生"
 run/main_scene="res://scenes/ui/main_menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -21,6 +21,10 @@ window/size/viewport_width=1200
 window/size/viewport_height=800
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[gui]
+
+theme/custom="res://resources/ui/menu_theme.tres"
 
 [input]
 

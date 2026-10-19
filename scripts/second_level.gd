@@ -57,6 +57,7 @@ func _ready() -> void:
 	compact_hud.name = "CompactHUD"
 	add_child(compact_hud)
 	compact_hud.configure(self)
+	LevelStoryCaption.attach(self, 2)
 	_second_ready = true
 	_refresh_second_hud()
 	hud.show_notice("第二关：%d秒后AI开始生产。接通两侧尸骸，培育前沿火力；点击AI可设为优先目标。" % ceili(wave_flow.profile.preparation_seconds))

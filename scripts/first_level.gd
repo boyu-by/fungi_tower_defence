@@ -61,6 +61,7 @@ func _ready() -> void:
 	wave_flow.configure(enemy_spawner)
 	_formal_ready = true
 	_layout_formal_hud()
+	LevelStoryCaption.attach(self, 1)
 	_refresh_formal_hud()
 	hud.show_notice("第一关：可先用 G 接通左前方80尸骸，再点击开始第一波。Space随时暂停规划。")
 
